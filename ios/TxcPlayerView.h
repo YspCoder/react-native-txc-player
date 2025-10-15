@@ -4,6 +4,8 @@
 #ifndef TxcPlayerViewNativeComponent_h
 #define TxcPlayerViewNativeComponent_h
 
+@class SuperPlayerView;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface TxcPlayerView : RCTViewComponentView

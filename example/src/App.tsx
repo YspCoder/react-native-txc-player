@@ -1,10 +1,54 @@
-import { View, StyleSheet } from 'react-native';
-import { TxcPlayerView } from 'react-native-txc-player';
+import { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Alert, Button, Text } from 'react-native';
+import { Commands, setTXCLicense, TxcPlayerView } from 'react-native-txc-player';
 
 export default function App() {
+
+  const ref = useRef<React.ElementRef<typeof TxcPlayerView>>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setTXCLicense(
+      'https://license.vod2.myqcloud.com/license/v2/1314161253_1/v_cube.license',
+      '99c843cd9e1a46a589fbd1a76cd244f6'
+    );
+    setReady(true);
+    console.log(
+      "sadadsdasdsa"
+    );
+    
+  }, []);
+
+  // 2) 只有 ready 才渲染播放器（防止先渲染后设置导致校验失败）
   return (
-    <View style={styles.container}>
-      <TxcPlayerView color="#32a852" style={styles.box} />
+    <View style={{ flex: 1, backgroundColor: '#000', padding: 12 }}>
+      {ready ? (
+        <>
+          <TxcPlayerView
+            ref={ref}
+            autoplay={true}
+            source={{
+              appId: "1500039285",
+              fileId: "5145403699454155159",
+              psign:
+                "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAzOTI4NSwiZmlsZUlkIjoiNTE0NTQwMzY5OTQ1NDE1NTE1OSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNjQ1OTk0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjA0OTQzNTMsImV4cGlyZVRpbWVTdGFtcCI6MTc2MDU4MDc1MywidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjhmMDU0OTEiLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzUxNDU0MDM2OTk0NTQxNTUxNTlfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.kdMKYL9cnZdUXx4xjwZN3vSIPHi4cVXz-13z6Sw-04Y",
+            }}
+            onPlayerEvent={(e: any) => {
+              const evt = e.nativeEvent;
+              console.log('[TXC event]', evt);
+              if (evt.type === 'error') {
+                Alert.alert(
+                  '播放错误',
+                  `code=${evt.code}, message=${evt.message}`
+                );
+              }
+            }}
+            style={styles.box}
+          />
+        </>
+      ) : (
+        <Text style={{ color: '#fff' }}>正在初始化 License…</Text>
+      )}
     </View>
   );
 }
@@ -16,8 +60,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   box: {
-    width: 60,
-    height: 60,
+    width: '100%',
+    height: '100%',
     marginVertical: 20,
   },
 });
