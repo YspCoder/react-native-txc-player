@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Alert, Button, Text } from 'react-native';
-import { Commands, setTXCLicense, TxcPlayerView } from 'react-native-txc-player';
+import { View, StyleSheet, Alert, Text } from 'react-native';
+import { setTXCLicense, TxcPlayerView } from 'react-native-txc-player';
 
 export default function App() {
 

@@ -1,4 +1,5 @@
 import { codegenNativeCommands, codegenNativeComponent, type HostComponent, type ViewProps } from 'react-native';
+// @ts-ignore
 import type { Int32,DirectEventHandler } from 'react-native/Libraries/Types/CodegenTypes';
 
 export type ChangeEvent = Readonly<{
