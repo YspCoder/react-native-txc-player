@@ -1,11 +1,11 @@
 package com.txcplayer
 
-import android.graphics.Color
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.ViewManagerDelegate
-import com.facebook.react.uimanager.annotations.ReactProp
+import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.viewmanagers.TxcPlayerViewManagerInterface
 import com.facebook.react.viewmanagers.TxcPlayerViewManagerDelegate
 
@@ -30,9 +30,45 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
     return TxcPlayerView(context)
   }
 
-  @ReactProp(name = "color")
-  override fun setColor(view: TxcPlayerView?, color: String?) {
-    view?.setBackgroundColor(Color.parseColor(color))
+  override fun setAutoplay(view: TxcPlayerView, value: Boolean) {
+    view.setAutoplay(value)
+  }
+
+  override fun setSource(view: TxcPlayerView, value: ReadableMap?) {
+    view.setSource(value)
+  }
+
+  override fun setConfig(view: TxcPlayerView, value: ReadableMap?) {
+    view.setConfig(value)
+  }
+
+  override fun receiveCommand(view: TxcPlayerView, commandId: String?, args: ReadableArray?) {
+    when (commandId) {
+      "pause" -> view.pausePlayback()
+      "resume" -> view.resumePlayback()
+      "reset" -> view.resetPlayback()
+    }
+  }
+
+  override fun receiveCommand(view: TxcPlayerView, commandId: Int, args: ReadableArray?) {
+    when (commandId) {
+      1 -> view.pausePlayback()
+      2 -> view.resumePlayback()
+      3 -> view.resetPlayback()
+    }
+  }
+
+  override fun getCommandsMap(): MutableMap<String, Int> {
+    return mutableMapOf(
+      "pause" to 1,
+      "resume" to 2,
+      "reset" to 3
+    )
+  }
+
+  override fun onDropViewInstance(view: TxcPlayerView) {
+    super.onDropViewInstance(view)
+    view.cleanup()
   }
 
   companion object {
