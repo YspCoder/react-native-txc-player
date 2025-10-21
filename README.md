@@ -75,6 +75,13 @@ export default function Player() {
           hideFullscreenButton: true,
           hideFloatWindowButton: true,
           hidePipButton: true,
+          hideBackButton: true,
+          hideResolutionButton: true,
+          hidePlayButton: true,
+          hideProgressBar: true,
+          autoHideProgressBar: true,
+          maxBufferSize: 120,
+          maxPreloadSize: 20,
           disableDownload: true,
           dynamicWatermark: {
             type: 'ghost',
@@ -117,15 +124,22 @@ const styles = StyleSheet.create({
 | `autoplay` | `boolean` | Autoplay when a new source is assigned. Defaults to `false`. |
 | `source` | `{ url?: string; appId?: string; fileId?: string; psign?: string }` | Either pass a direct URL **or** a VOD `fileId` with the corresponding `appId`/`psign`. |
 | `config` | `PlayerConfig` | Optional UI/runtime tweaks (see below). |
-| `onPlayerEvent` | `(event) => void` | Receives events such as `begin`, `firstFrame`, `end`, `loadingEnd`, `error`, `subtitleNotice`.  The payload also contains `code`/`message` when available. |
+| `onPlayerEvent` | `(event) => void` | Receives events such as `begin`, `firstFrame`, `progress`, `end`, `loadingEnd`, `error`, `subtitleNotice`.  The payload also contains `code`/`message` when available. |
 
 `PlayerConfig`
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `hideFullscreenButton` | `boolean` | Hides the fullscreen button in the native SuperPlayer UI (iOS). Android uses a custom overlay, so the flag is informational only. |
+| `hideFullscreenButton` (`hideFullScreenButton`) | `boolean` | Hides the fullscreen button in the native SuperPlayer UI (iOS). Android uses a custom overlay, so the flag is informational only. |
 | `hideFloatWindowButton` | `boolean` | Disables the floating-window control on iOS and prevents the Android view from attempting to enter float mode. |
 | `hidePipButton` | `boolean` | Hides the Picture-in-Picture button and force-disables automatic PiP. |
+| `hideBackButton` | `boolean` | Hides the back button in the default SuperPlayer control overlay (iOS only). |
+| `hideResolutionButton` | `boolean` | Hides the clarity/resolution switcher button in the default SuperPlayer controls (iOS only). |
+| `hidePlayButton` | `boolean` | Hides the central play/pause button that sits to the left of the progress slider (iOS only). |
+| `hideProgressBar` | `boolean` | Completely hides the native progress slider and time labels (iOS only). |
+| `autoHideProgressBar` | `boolean` | Keeps the SuperPlayer controls auto-hiding (default `true`). Set to `false` to pin the progress bar and toolbars on screen. |
+| `maxBufferSize` | `number` | Maximum forward playback buffer size in MB. Mirrors `TXVodPlayConfig.maxBufferSize`. |
+| `maxPreloadSize` | `number` | Maximum preroll/preload buffer size in MB. Mirrors `TXVodPlayConfig.maxPreloadSize`. |
 | `disableDownload` | `boolean` | Hides the download button (iOS SuperPlayer UI). |
 | `coverUrl` | `string` | Remote image displayed until the first video frame renders. |
 | `dynamicWatermark` | `{ type?: 'dynamic' \| 'ghost'; text: string; duration?: number; fontSize?: number; color?: string }` | Adds a moving text watermark overlay. `ghost` lowers alpha to mimic the official ghost watermark style. `duration` controls how often the text changes position (seconds). |
@@ -139,6 +153,7 @@ import { Commands } from 'react-native-txc-player';
 Commands.pause(ref);
 Commands.resume(ref);
 Commands.reset(ref); // stops and resets the underlying native player
+Commands.seek(ref, 42); // jump to 42 seconds (best-effort)
 ```
 
 ## Events
@@ -149,11 +164,13 @@ Event payload example:
 {
   "type": "error",
   "code": -2301,
-  "message": "network disconnect"
+  "message": "Network disconnected"
 }
 ```
 
-`type` values currently emitted: `begin`, `firstFrame`, `loadingEnd`, `end`, `error`, `warning`, `subtitleNotice`.
+`type` values currently emitted: `begin`, `firstFrame`, `loadingEnd`, `end`, `error`, `warning`, `subtitleNotice`, `fullscreenChange`, `back`, and `progress`.
+
+- `progress` is delivered roughly every 250 ms with the current `position`, full `duration`, and buffered amount (`buffered`) in seconds. Use it to drive custom progress UIs without polling native state.
 
 ## Android resource management
 

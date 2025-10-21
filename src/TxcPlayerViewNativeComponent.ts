@@ -6,12 +6,20 @@ import {
 } from 'react-native';
 import type * as React from 'react';
 // @ts-ignore
-import type { Int32, Float, DirectEventHandler } from 'react-native/Libraries/Types/CodegenTypes';
+import type {
+  Int32,
+  Float,
+  DirectEventHandler,
+  WithDefault,
+} from 'react-native/Libraries/Types/CodegenTypes';
 
 export type ChangeEvent = Readonly<{
   type: string;
   code?: Int32;
   message?: string;
+  position?: Float;
+  duration?: Float;
+  buffered?: Float;
 }>;
 
 export type Source = Readonly<{
@@ -37,8 +45,16 @@ export type WatermarkConfig = Readonly<{
 
 export type PlayerConfig = Readonly<{
   hideFullscreenButton?: boolean;
+  hideFullScreenButton?: boolean;
   hideFloatWindowButton?: boolean;
   hidePipButton?: boolean;
+  hideBackButton?: boolean;
+  hideResolutionButton?: boolean;
+  hidePlayButton?: boolean;
+  hideProgressBar?: boolean;
+  autoHideProgressBar?: WithDefault<boolean, true>;
+  maxBufferSize?: Float;
+  maxPreloadSize?: Float;
   disableDownload?: boolean;
   coverUrl?: string;
   dynamicWatermark?: WatermarkConfig;
@@ -58,10 +74,11 @@ interface NativeCommands {
   pause(ref: React.ElementRef<NativeComponent>): void;
   resume(ref: React.ElementRef<NativeComponent>): void;
   reset(ref: React.ElementRef<NativeComponent>): void;
+  seek(ref: React.ElementRef<NativeComponent>, position: Float): void;
 }
 
 export const Commands = codegenNativeCommands<NativeCommands>({
-  supportedCommands: ['pause', 'resume', 'reset'],
+  supportedCommands: ['pause', 'resume', 'reset', 'seek'],
 });
 
 export default codegenNativeComponent<NativeProps>('TxcPlayerView', {

@@ -47,6 +47,12 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
       "pause" -> view.pausePlayback()
       "resume" -> view.resumePlayback()
       "reset" -> view.resetPlayback()
+      "seek" -> {
+        val position = args?.takeIf { it.size() > 0 }?.getDouble(0)
+        if (position != null) {
+          view.seekTo(position)
+        }
+      }
     }
   }
 
@@ -55,6 +61,12 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
       1 -> view.pausePlayback()
       2 -> view.resumePlayback()
       3 -> view.resetPlayback()
+      4 -> {
+        val position = args?.takeIf { it.size() > 0 }?.getDouble(0)
+        if (position != null) {
+          view.seekTo(position)
+        }
+      }
     }
   }
 
@@ -62,7 +74,8 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
     return mutableMapOf(
       "pause" to 1,
       "resume" to 2,
-      "reset" to 3
+      "reset" to 3,
+      "seek" to 4
     )
   }
 

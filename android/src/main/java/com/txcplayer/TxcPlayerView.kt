@@ -27,6 +27,7 @@ import com.tencent.rtmp.ITXVodPlayListener
 import com.tencent.rtmp.TXLiveConstants
 import com.tencent.rtmp.TXPlayerAuthBuilder
 import com.tencent.rtmp.TXVodPlayer
+import com.tencent.rtmp.TXVodPlayConfig
 import com.tencent.rtmp.ui.TXCloudVideoView
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -65,6 +66,13 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     var hideFullscreenButton: Boolean = false,
     var hideFloatWindowButton: Boolean = false,
     var hidePipButton: Boolean = false,
+    var hideBackButton: Boolean = false,
+    var hideResolutionButton: Boolean = false,
+    var hidePlayButton: Boolean = false,
+    var hideProgressBar: Boolean = false,
+    var autoHideProgressBar: Boolean = true,
+    var maxBufferSize: Int? = null,
+    var maxPreloadSize: Int? = null,
     var disableDownload: Boolean = false,
     var coverUrl: String? = null,
     var watermark: WatermarkConfig? = null,
@@ -94,6 +102,29 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
         TXLiveConstants.PLAY_EVT_PLAY_BEGIN -> {
           coverView.visibility = View.GONE
           dispatchEvent("begin", event, bundle?.getString(TXLiveConstants.EVT_DESCRIPTION))
+        }
+        TXLiveConstants.PLAY_EVT_PLAY_PROGRESS -> {
+          val progressMs = bundle?.getInt(TXLiveConstants.EVT_PLAY_PROGRESS_MS)
+            ?: bundle?.getInt(TXLiveConstants.EVT_PLAY_PROGRESS)?.times(1000)
+            ?: -1
+          val durationMs = bundle?.getInt(TXLiveConstants.EVT_PLAY_DURATION_MS)
+            ?: bundle?.getInt(TXLiveConstants.EVT_PLAY_DURATION)?.times(1000)
+            ?: -1
+          val playableMs = bundle?.getInt(TXLiveConstants.EVT_PLAYABLE_DURATION_MS)
+            ?: bundle?.getInt(TXLiveConstants.EVT_PLAYABLE_DURATION)?.times(1000)
+            ?: -1
+
+          if (progressMs >= 0 || durationMs >= 0 || playableMs >= 0) {
+            val positionSeconds = if (progressMs >= 0) progressMs / 1000.0 else null
+            val durationSeconds = if (durationMs >= 0) durationMs / 1000.0 else null
+            val bufferedSeconds = if (playableMs >= 0) playableMs / 1000.0 else null
+            dispatchEvent(
+              type = "progress",
+              positionSeconds = positionSeconds,
+              durationSeconds = durationSeconds,
+              bufferedSeconds = bufferedSeconds
+            )
+          }
         }
         else -> {
           if (event < 0) {
@@ -149,11 +180,23 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   fun setConfig(map: ReadableMap?) {
     if (map == null) {
       config = PlayerConfig()
+      UiThreadUtil.runOnUiThread {
+        applyPlayerConfiguration()
+      }
       return
     }
-    config.hideFullscreenButton = map.getBooleanSafe("hideFullscreenButton")
+    val hideFullscreen = map.getBooleanSafe("hideFullscreenButton") ||
+      map.getBooleanSafe("hideFullScreenButton")
+    config.hideFullscreenButton = hideFullscreen
     config.hideFloatWindowButton = map.getBooleanSafe("hideFloatWindowButton")
     config.hidePipButton = map.getBooleanSafe("hidePipButton")
+    config.hideBackButton = map.getBooleanSafe("hideBackButton")
+    config.hideResolutionButton = map.getBooleanSafe("hideResolutionButton")
+    config.hidePlayButton = map.getBooleanSafe("hidePlayButton")
+    config.hideProgressBar = map.getBooleanSafe("hideProgressBar")
+    config.autoHideProgressBar = map.getBooleanWithDefault("autoHideProgressBar", config.autoHideProgressBar)
+    config.maxBufferSize = map.getDoubleSafe("maxBufferSize")?.toInt()
+    config.maxPreloadSize = map.getDoubleSafe("maxPreloadSize")?.toInt()
     config.disableDownload = map.getBooleanSafe("disableDownload")
     config.coverUrl = map.getStringSafe("coverUrl")
     config.subtitles = parseSubtitles(map)
@@ -161,6 +204,9 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
 
     loadCover(config.coverUrl)
     applyWatermarkConfig(config.watermark)
+    UiThreadUtil.runOnUiThread {
+      applyPlayerConfiguration()
+    }
   }
 
   fun pausePlayback() {
@@ -185,10 +231,19 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     }
   }
 
+  fun seekTo(positionSeconds: Double) {
+    if (isReleased) return
+    val clamped = if (positionSeconds < 0.0) 0.0 else positionSeconds
+    UiThreadUtil.runOnUiThread {
+      player.seek(clamped.toFloat())
+    }
+  }
+
   private fun maybeStartPlayback() {
     if (isReleased || !shouldAutoplay) return
     val source = currentSource ?: return
     UiThreadUtil.runOnUiThread {
+      applyPlayerConfiguration()
       startPlayback(source)
     }
   }
@@ -217,6 +272,33 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     loadCover(config.coverUrl)
     applyWatermarkConfig(config.watermark)
     hasStartedPlayback = true
+  }
+
+  private fun applyPlayerConfiguration() {
+    val maxBuffer = config.maxBufferSize
+    val maxPreload = config.maxPreloadSize
+    if (maxBuffer == null && maxPreload == null) {
+      return
+    }
+    val playConfig = player.config ?: TXVodPlayConfig()
+    var mutated = false
+    maxBuffer?.let {
+      val desired = if (it < 0) 0 else it
+      if (playConfig.maxBufferSize != desired) {
+        playConfig.maxBufferSize = desired
+        mutated = true
+      }
+    }
+    maxPreload?.let {
+      val desired = if (it < 0) 0 else it
+      if (playConfig.maxPreloadSize != desired) {
+        playConfig.maxPreloadSize = desired
+        mutated = true
+      }
+    }
+    if (mutated) {
+      player.config = playConfig
+    }
   }
 
   private fun stopPlayback() {
@@ -325,12 +407,22 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     return result
   }
 
-  private fun dispatchEvent(type: String, code: Int?, message: String?) {
+  private fun dispatchEvent(
+    type: String,
+    code: Int? = null,
+    message: String? = null,
+    positionSeconds: Double? = null,
+    durationSeconds: Double? = null,
+    bufferedSeconds: Double? = null
+  ) {
     val reactContext = this.reactContext ?: return
     val map = Arguments.createMap().apply {
       putString("type", type)
       code?.let { putInt("code", it) }
       message?.let { putString("message", it) }
+      positionSeconds?.let { putDouble("position", it) }
+      durationSeconds?.let { putDouble("duration", it) }
+      bufferedSeconds?.let { putDouble("buffered", it) }
     }
     reactContext.getJSModule(RCTEventEmitter::class.java)
       ?.receiveEvent(id, "onPlayerEvent", map)
@@ -377,6 +469,14 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
 
   private fun ReadableMap.getBooleanSafe(key: String): Boolean {
     return if (hasKey(key) && getType(key) == ReadableType.Boolean) getBoolean(key) else false
+  }
+
+  private fun ReadableMap.getBooleanWithDefault(key: String, default: Boolean): Boolean {
+    return if (hasKey(key) && getType(key) == ReadableType.Boolean) getBoolean(key) else default
+  }
+
+  private fun ReadableMap.getDoubleSafe(key: String): Double? {
+    return if (hasKey(key) && getType(key) == ReadableType.Number) getDouble(key) else null
   }
 
   private fun ReadableMap.getMapSafe(key: String): ReadableMap? {

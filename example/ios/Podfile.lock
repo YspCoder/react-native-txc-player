@@ -2353,7 +2353,7 @@ PODS:
     - Masonry
     - SDWebImage
     - TXLiteAVSDK_Player
-  - TxcPlayer (0.1.0):
+  - TxcPlayer (0.1.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -2695,7 +2695,7 @@ SPEC CHECKSUMS:
   SDWebImage: 16309af6d214ba3f77a7c6f6fdda888cb313a50a
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   SuperPlayer: fc8d902ff3f0b9d81f0393221bf0990400284b78
-  TxcPlayer: e07d24f24c7d6cffe416a7a6c472e6ae8b9489fd
+  TxcPlayer: 9e36c8aa118255f7d8a4069263e03bf71d60d16c
   TXLiteAVSDK_Player: b71e56e1401a42d16b4d9fef0d5ad088f60af876
   Yoga: 11c9686a21e2cd82a094a723649d9f4507200fb0
 

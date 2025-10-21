@@ -13,6 +13,12 @@
 #import <SuperPlayer/SuperPlayerSmallWindowManager.h>
 #import <SuperPlayer/DynamicWaterModel.h>
 #import <SuperPlayer/SuperPlayerSubtitles.h>
+#import <SuperPlayer/UIView+Fade.h>
+#import "TXLiveSDKTypeDef.h"
+#import "TXVodPlayer.h"
+#import <QuartzCore/QuartzCore.h>
+#import <float.h>
+#import <math.h>
 #import <SDWebImage/UIImageView+WebCache.h>
 #import <objc/runtime.h>
 #import "RCTFabricComponentsPlugins.h"
@@ -102,7 +108,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
   return nil;
 }
 
-@interface TxcPlayerView () <RCTTxcPlayerViewViewProtocol, SuperPlayerDelegate>
+@interface TxcPlayerView () <RCTTxcPlayerViewViewProtocol, SuperPlayerDelegate, SuperPlayerPlayListener>
 @property (nonatomic, strong) SuperPlayerView *playerView;
 @end
 
@@ -112,10 +118,18 @@ static UIColor *TXCColorFromHexString(NSString *input)
   BOOL _hideFullscreenButton;
   BOOL _hideFloatWindow;
   BOOL _hidePipButton;
+  BOOL _hideBackButton;
+  BOOL _hideResolutionButton;
+  BOOL _hidePlayButton;
+  BOOL _hideProgressBar;
+  BOOL _autoHideProgressBar;
   BOOL _disableDownload;
+  CGFloat _maxBufferSize;
+  CGFloat _maxPreloadSize;
   NSString *_Nullable _coverURLString;
   DynamicWaterModel *_Nullable _watermarkConfig;
   NSArray<SuperPlayerSubtitles *> *_Nullable _externalSubtitleModels;
+  CFTimeInterval _lastProgressEventTs;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -133,6 +147,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
     _playerView = [SuperPlayerView new];
     _playerView.delegate = self;
+    _playerView.playListener = self;
     _playerView.fatherView = self;
 
     self.contentView = _playerView;
@@ -142,10 +157,18 @@ static UIColor *TXCColorFromHexString(NSString *input)
     _hideFullscreenButton = NO;
     _hideFloatWindow = NO;
     _hidePipButton = NO;
+    _hideBackButton = NO;
+    _hideResolutionButton = NO;
+    _hidePlayButton = NO;
+    _hideProgressBar = NO;
+    _autoHideProgressBar = YES;
     _disableDownload = NO;
+    _maxBufferSize = 0;
+    _maxPreloadSize = 0;
     _coverURLString = nil;
     _watermarkConfig = nil;
     _externalSubtitleModels = nil;
+    _lastProgressEventTs = 0;
   }
   return self;
 }
@@ -153,6 +176,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
 - (void)dealloc
 {
   @try { [_playerView resetPlayer]; } @catch (__unused NSException *e) {}
+  _playerView.playListener = nil;
 }
 
 - (void)layoutSubviews
@@ -189,16 +213,30 @@ static UIColor *TXCColorFromHexString(NSString *input)
   _hideFullscreenButton = NO;
   _hideFloatWindow = NO;
   _hidePipButton = NO;
+  _hideBackButton = NO;
+  _hideResolutionButton = NO;
+  _hidePlayButton = NO;
+  _hideProgressBar = NO;
+  _autoHideProgressBar = YES;
   _disableDownload = NO;
+  _maxBufferSize = 0;
+  _maxPreloadSize = 0;
   _coverURLString = nil;
   _watermarkConfig = nil;
   _externalSubtitleModels = nil;
 
   const auto &cfg = newViewProps.config;
-  _hideFullscreenButton = cfg.hideFullscreenButton;
+  _hideFullscreenButton = cfg.hideFullscreenButton || cfg.hideFullScreenButton;
   _hideFloatWindow = cfg.hideFloatWindowButton;
   _hidePipButton = cfg.hidePipButton;
+  _hideBackButton = cfg.hideBackButton;
+  _hideResolutionButton = cfg.hideResolutionButton;
+  _hidePlayButton = cfg.hidePlayButton;
+  _hideProgressBar = cfg.hideProgressBar;
+  _autoHideProgressBar = cfg.autoHideProgressBar;
   _disableDownload = cfg.disableDownload;
+  _maxBufferSize = cfg.maxBufferSize;
+  _maxPreloadSize = cfg.maxPreloadSize;
 
   if (!cfg.coverUrl.empty()) {
     _coverURLString = RCTNSStringFromString(cfg.coverUrl);
@@ -268,6 +306,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
   [self applyUIConfig];
   [self updateCoverImageIfNeeded];
+  [self scheduleApplyVodConfigIfNeeded];
 }
 
 #pragma mark - Config Helpers
@@ -281,13 +320,35 @@ static UIColor *TXCColorFromHexString(NSString *input)
     }
 
     if (controlView) {
+      controlView.enableFadeAction = self->_autoHideProgressBar;
+      if (!self->_autoHideProgressBar) {
+        [controlView fadeShow];
+        [controlView cancelFadeOut];
+      }
+
       controlView.fullScreenBtn.hidden = self->_hideFullscreenButton;
       controlView.fullScreenBtn.enabled = !self->_hideFullscreenButton;
       [controlView setDisableOfflineBtn:self->_disableDownload];
 
+      controlView.disableBackBtn = self->_hideBackButton;
+      controlView.backBtn.hidden = self->_hideBackButton;
+      controlView.backBtn.enabled = !self->_hideBackButton;
+
+      controlView.disableResolutionBtn = self->_hideResolutionButton;
+      controlView.resolutionBtn.hidden = self->_hideResolutionButton;
+      controlView.resolutionBtn.enabled = !self->_hideResolutionButton;
+
       controlView.disablePipBtn = self->_hidePipButton;
       controlView.pipBtn.hidden = self->_hidePipButton;
       controlView.pipBtn.enabled = !self->_hidePipButton;
+
+      controlView.startBtn.hidden = self->_hidePlayButton;
+      controlView.startBtn.enabled = !self->_hidePlayButton;
+
+      controlView.videoSlider.hidden = self->_hideProgressBar;
+      controlView.videoSlider.userInteractionEnabled = !self->_hideProgressBar;
+      controlView.currentTimeLabel.hidden = self->_hideProgressBar;
+      controlView.totalTimeLabel.hidden = self->_hideProgressBar;
     }
 
     if (self->_hidePipButton) {
@@ -348,6 +409,50 @@ static UIColor *TXCColorFromHexString(NSString *input)
   return result;
 }
 
+- (TXVodPlayer *)txc_currentVodPlayer
+{
+  if (![self.playerView respondsToSelector:NSSelectorFromString(@"vodPlayer")]) {
+    return nil;
+  }
+  @try {
+    return [self.playerView valueForKey:@"vodPlayer"];
+  } @catch (__unused NSException *exception) {
+    return nil;
+  }
+}
+
+- (void)applyVodConfigIfNeeded
+{
+  TXVodPlayer *vodPlayer = [self txc_currentVodPlayer];
+  if (!vodPlayer) {
+    return;
+  }
+
+  TXVodPlayConfig *config = vodPlayer.config ?: [[TXVodPlayConfig alloc] init];
+  BOOL mutated = NO;
+  CGFloat desiredBuffer = _maxBufferSize < 0 ? 0 : _maxBufferSize;
+  CGFloat desiredPreload = _maxPreloadSize < 0 ? 0 : _maxPreloadSize;
+  if (fabs(config.maxBufferSize - desiredBuffer) > DBL_EPSILON) {
+    config.maxBufferSize = desiredBuffer;
+    mutated = YES;
+  }
+  if (fabs(config.maxPreloadSize - desiredPreload) > DBL_EPSILON) {
+    config.maxPreloadSize = desiredPreload;
+    mutated = YES;
+  }
+
+  if (mutated) {
+    vodPlayer.config = config;
+  }
+}
+
+- (void)scheduleApplyVodConfigIfNeeded
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [self applyVodConfigIfNeeded];
+  });
+}
+
 #pragma mark - Commands（Fabric：codegen -> handleCommand）
 
 - (void)handleCommand:(NSString *)commandName args:(NSArray *)args
@@ -358,6 +463,11 @@ static UIColor *TXCColorFromHexString(NSString *input)
     [self resume];
   } else if ([commandName isEqualToString:@"reset"]) {
     [self reset];
+  } else if ([commandName isEqualToString:@"seek"]) {
+    NSNumber *value = args.count > 0 ? args[0] : nil;
+    if ([value isKindOfClass:[NSNumber class]]) {
+      [self seekToSeconds:value.doubleValue];
+    }
   } else {
     [super handleCommand:commandName args:args];
   }
@@ -368,6 +478,29 @@ static UIColor *TXCColorFromHexString(NSString *input)
 - (void)pause { [_playerView pause]; }
 - (void)resume { [_playerView resume]; }
 - (void)reset  { [_playerView resetPlayer]; }
+
+- (void)seekToSeconds:(double)seconds
+{
+  if (!isfinite(seconds)) {
+    return;
+  }
+
+  double clamped = seconds;
+  if (clamped < 0.0) {
+    clamped = 0.0;
+  }
+
+  _lastProgressEventTs = 0;
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    TXVodPlayer *vodPlayer = [self txc_currentVodPlayer];
+    if (vodPlayer) {
+      [vodPlayer seek:(float)clamped];
+    } else {
+      [self.playerView seekToTime:(NSInteger)llround(clamped)];
+    }
+  });
+}
 
 - (void)maybePlay
 {
@@ -390,6 +523,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
   if ([url isKindOfClass:[NSString class]] && url.length > 0) {
     model.videoURL = url;
     [_playerView playWithModelNeedLicence:model];
+    [self scheduleApplyVodConfigIfNeeded];
     return;
   }
 
@@ -422,6 +556,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
     model.videoId = vid;
 
     [_playerView playWithModelNeedLicence:model];
+    [self scheduleApplyVodConfigIfNeeded];
     return;
   }
 
@@ -431,18 +566,61 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
 #pragma mark - 事件（Fabric EventEmitter）
 
-- (void)emitChangeWithType:(NSString *)type code:(NSNumber * _Nullable)code message:(NSString * _Nullable)message
+- (void)emitChangeWithType:(NSString *)type
+                      code:(NSNumber *_Nullable)code
+                   message:(NSString *_Nullable)message
+                  position:(NSNumber *_Nullable)position
+                  duration:(NSNumber *_Nullable)duration
+                  buffered:(NSNumber *_Nullable)buffered
 {
-  NSLog(@"[TXC] superPlayerError code=%d msg=%@", code, message);
   auto emitter = std::static_pointer_cast<const TxcPlayerViewEventEmitter>(_eventEmitter);
-  if (!emitter) return;
+  if (!emitter) {
+    return;
+  }
 
   TxcPlayerViewEventEmitter::OnPlayerEvent event{
     .type = RCTStringFromNSString(type),
     .code = code ? code.intValue : 0,
-    .message = message ? RCTStringFromNSString(message) : std::string()
+    .message = message ? RCTStringFromNSString(message) : std::string(),
+    .position = position ? position.doubleValue : 0.0,
+    .duration = duration ? duration.doubleValue : 0.0,
+    .buffered = buffered ? buffered.doubleValue : 0.0
   };
   emitter->onPlayerEvent(event);
+}
+
+- (void)emitChangeWithType:(NSString *)type code:(NSNumber *_Nullable)code message:(NSString *_Nullable)message
+{
+  [self emitChangeWithType:type code:code message:message position:nil duration:nil buffered:nil];
+}
+
+- (void)emitProgressWithParam:(NSDictionary *)param
+{
+  NSTimeInterval now = CACurrentMediaTime();
+  if (_lastProgressEventTs > 0 && (now - _lastProgressEventTs) < 0.25) {
+    return;
+  }
+  _lastProgressEventTs = now;
+
+  NSNumber *progress = param[EVT_PLAY_PROGRESS];
+  NSNumber *duration = param[EVT_PLAY_DURATION];
+  NSNumber *playable = param[EVT_PLAYABLE_DURATION];
+
+  if (!progress && param[@"EVT_PLAY_PROGRESS_MS"]) {
+    progress = @([param[@"EVT_PLAY_PROGRESS_MS"] doubleValue] / 1000.0);
+  }
+  if (!duration && param[@"EVT_PLAY_DURATION_MS"]) {
+    duration = @([param[@"EVT_PLAY_DURATION_MS"] doubleValue] / 1000.0);
+  }
+  if (!playable && param[@"EVT_PLAYABLE_DURATION_MS"]) {
+    playable = @([param[@"EVT_PLAYABLE_DURATION_MS"] doubleValue] / 1000.0);
+  }
+
+  if (!progress && !duration && !playable) {
+    return;
+  }
+
+  [self emitChangeWithType:@"progress" code:nil message:nil position:progress duration:duration buffered:playable];
 }
 
 - (void)superPlayerFullScreenChanged:(SuperPlayerView *)player
@@ -454,6 +632,13 @@ static UIColor *TXCColorFromHexString(NSString *input)
 - (void)superPlayerError:(SuperPlayerView *)player errCode:(int)code errMessage:(NSString *)why
 {
   [self emitChangeWithType:@"error" code:@(code) message:why ?: @""];
+}
+
+- (void)onVodPlayEvent:(TXVodPlayer *)player event:(int)EvtID withParam:(NSDictionary *)param
+{
+  if (EvtID == PLAY_EVT_PLAY_PROGRESS) {
+    [self emitProgressWithParam:param];
+  }
 }
 
 #pragma mark - Utils
