@@ -4,7 +4,7 @@ import {
   type HostComponent,
   type ViewProps,
 } from 'react-native';
-import type { ElementRef } from 'react';
+import type * as React from 'react';
 // @ts-ignore
 import type { Int32, Float, DirectEventHandler } from 'react-native/Libraries/Types/CodegenTypes';
 
@@ -55,9 +55,9 @@ interface NativeProps extends ViewProps {
 type NativeComponent = HostComponent<NativeProps>;
 
 interface NativeCommands {
-  pause(ref: ElementRef<NativeComponent>): void;
-  resume(ref: ElementRef<NativeComponent>): void;
-  reset(ref: ElementRef<NativeComponent>): void;
+  pause(ref: React.ElementRef<NativeComponent>): void;
+  resume(ref: React.ElementRef<NativeComponent>): void;
+  reset(ref: React.ElementRef<NativeComponent>): void;
 }
 
 export const Commands = codegenNativeCommands<NativeCommands>({
@@ -69,4 +69,4 @@ export default codegenNativeComponent<NativeProps>('TxcPlayerView', {
   paperComponentName: 'TxcPlayerView',
 });
 
-export type TxcPlayerViewRef = ElementRef<NativeComponent>;
+export type TxcPlayerViewRef = React.ElementRef<NativeComponent>;
