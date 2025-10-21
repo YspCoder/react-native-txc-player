@@ -6,12 +6,7 @@ import {
 } from 'react-native';
 import type * as React from 'react';
 // @ts-ignore
-import type {
-  Int32,
-  Float,
-  DirectEventHandler,
-  WithDefault,
-} from 'react-native/Libraries/Types/CodegenTypes';
+import type {Int32,Float,DirectEventHandler,WithDefault,} from 'react-native/Libraries/Types/CodegenTypes';
 
 export type ChangeEvent = Readonly<{
   type: string;
