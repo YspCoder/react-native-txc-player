@@ -31,24 +31,19 @@ export default function App() {
         <>
           <Pressable
             onPress={() => {
-              if (!ref.current) return;
-              if (isPlaying) {
-                Commands.pause(ref.current);
-              } else {
-                Commands.resume(ref.current);
-              }
-              setIsPlaying(!isPlaying);
+              setIsPlaying((prev) => !prev);
             }}
             style={styles.box}
           >
             <TxcPlayerView
               ref={ref}
               autoplay
+              paused={!isPlaying}
               source={{
-                appId: '1500039285',
-                fileId: '5145403693842665329',
+                appId: '1500024012',
+                fileId: '3270835013523263935',
                 psign:
-                  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAzOTI4NSwiZmlsZUlkIjoiNTE0NTQwMzY5Mzg0MjY2NTMyOSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNjQ1OTk0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjA5NTk3NjAsImV4cGlyZVRpbWVTdGFtcCI6MTc2MTIxODk2MCwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjhmYTExOTAiLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzUxNDU0MDM2OTM4NDI2NjUzMjlfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.ZfPtVuYbFHGsScuctHAA15jhprUuzfs2Fvw8lCh7IIE',
+                  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI2MzkzNSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjExMjY2MzEsImV4cGlyZVRpbWVTdGFtcCI6MTc2MTM4NTgzMSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjhmYzlkNjciLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNjM5MzVfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.QLv7BX3KWIxMmON_p34v8IuPbwKvFYGggsazSy6TqAo',
               }}
               config={{
                 hideFullscreenButton: true,
@@ -74,9 +69,6 @@ export default function App() {
                   setIsPlaying(false);
                 }
                 if (evt.type === 'progress') {
-                  if (typeof evt.position === 'number') {
-                    setPosition(evt.position);
-                  }
                   if (typeof evt.duration === 'number') {
                     setDuration(evt.duration);
                   }
@@ -86,6 +78,12 @@ export default function App() {
                     '播放错误',
                     `code=${evt.code}, message=${evt.message}`
                   );
+                }
+              }}
+              onProgress={(e: any) => {
+                const progress = e?.nativeEvent?.position;
+                if (typeof progress === 'number') {
+                  setPosition(progress);
                 }
               }}
               style={StyleSheet.absoluteFill}

@@ -56,11 +56,17 @@ export type PlayerConfig = Readonly<{
   subtitles?: readonly Subtitle[];
 }>;
 
+export type ProgressEvent = Readonly<{
+  position: Float;
+}>;
+
 interface NativeProps extends ViewProps {
   autoplay?: boolean;
+  paused?: WithDefault<boolean, false>;
   source?: Source;
   config?: PlayerConfig;
   onPlayerEvent?: DirectEventHandler<ChangeEvent>;
+  onProgress?: DirectEventHandler<ProgressEvent>;
 }
 
 type NativeComponent = HostComponent<NativeProps>;

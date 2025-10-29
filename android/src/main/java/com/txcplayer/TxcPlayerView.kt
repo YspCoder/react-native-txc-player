@@ -42,6 +42,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
 
   private var isReleased = false
   private var shouldAutoplay: Boolean = true
+  private var pausedByProp: Boolean = false
   private var currentSource: Source? = null
   private var config: PlayerConfig = PlayerConfig()
   private var watermarkRunnable: Runnable? = null
@@ -124,6 +125,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
               durationSeconds = durationSeconds,
               bufferedSeconds = bufferedSeconds
             )
+            positionSeconds?.let { dispatchProgress(it) }
           }
         }
         else -> {
@@ -165,6 +167,16 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     shouldAutoplay = value
     player.setAutoPlay(value)
     maybeStartPlayback()
+  }
+
+  fun setPaused(value: Boolean) {
+    if (pausedByProp == value) return
+    pausedByProp = value
+    if (value) {
+      pausePlayback()
+    } else {
+      resumePlayback()
+    }
   }
 
   fun setSource(map: ReadableMap?) {
@@ -211,16 +223,21 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
 
   fun pausePlayback() {
     if (isReleased) return
-    player.pause()
+    UiThreadUtil.runOnUiThread {
+      player.pause()
+    }
   }
 
   fun resumePlayback() {
-    if (isReleased) return
-    if (!hasStartedPlayback) {
-      val source = currentSource ?: return
-      startPlayback(source)
-    } else {
-      player.resume()
+    if (isReleased || pausedByProp) return
+    UiThreadUtil.runOnUiThread {
+      if (!hasStartedPlayback) {
+        val source = currentSource ?: return@runOnUiThread
+        applyPlayerConfiguration()
+        startPlayback(source)
+      } else {
+        player.resume()
+      }
     }
   }
 
@@ -240,7 +257,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   }
 
   private fun maybeStartPlayback() {
-    if (isReleased || !shouldAutoplay) return
+    if (isReleased || !shouldAutoplay || pausedByProp) return
     val source = currentSource ?: return
     UiThreadUtil.runOnUiThread {
       applyPlayerConfiguration()
@@ -428,6 +445,15 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
       ?.receiveEvent(id, "onPlayerEvent", map)
   }
 
+  private fun dispatchProgress(positionSeconds: Double) {
+    val reactContext = this.reactContext ?: return
+    val map = Arguments.createMap().apply {
+      putDouble("position", positionSeconds)
+    }
+    reactContext.getJSModule(RCTEventEmitter::class.java)
+      ?.receiveEvent(id, "onProgress", map)
+  }
+
   fun cleanup() {
     if (isReleased) return
     handler.removeCallbacksAndMessages(null)
@@ -446,7 +472,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   }
 
   override fun onHostResume() {
-    if (!isReleased && shouldAutoplay) {
+    if (!isReleased && shouldAutoplay && !pausedByProp) {
       player.resume()
     }
     playerView.onResume()

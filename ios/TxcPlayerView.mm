@@ -114,6 +114,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
 @implementation TxcPlayerView {
   BOOL _autoplay;
+  BOOL _paused;
   NSDictionary *_Nullable _source;
   BOOL _hideFullscreenButton;
   BOOL _hideFloatWindow;
@@ -154,6 +155,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
     self.clipsToBounds = YES;
 
     _autoplay = YES; // 默认自动播放
+    _paused = NO;
     _hideFullscreenButton = NO;
     _hideFloatWindow = NO;
     _hidePipButton = NO;
@@ -193,6 +195,8 @@ static UIColor *TXCColorFromHexString(NSString *input)
   const auto &newViewProps = *std::static_pointer_cast<TxcPlayerViewProps const>(props);
 
   _autoplay = newViewProps.autoplay;
+  BOOL wasPaused = _paused;
+  _paused = newViewProps.paused;
 
   // source（对象，需要从 RawValue 转 NSDictionary 使用）
   NSMutableDictionary *dict = [NSMutableDictionary dictionary];
@@ -300,8 +304,14 @@ static UIColor *TXCColorFromHexString(NSString *input)
   [super updateProps:props oldProps:oldProps];
 
   // 自动播放
-  if (_autoplay) {
+  if (_autoplay && !_paused) {
     [self maybePlay];
+  }
+
+  if (_paused) {
+    [self pause];
+  } else if (wasPaused) {
+    [self resume];
   }
 
   [self applyUIConfig];
@@ -504,7 +514,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
 - (void)maybePlay
 {
-  if (!_autoplay || !_source) return;
+  if (!_autoplay || !_source || _paused) return;
 
   SuperPlayerModel *model = [SuperPlayerModel new];
 
@@ -594,6 +604,23 @@ static UIColor *TXCColorFromHexString(NSString *input)
   [self emitChangeWithType:type code:code message:message position:nil duration:nil buffered:nil];
 }
 
+- (void)emitProgressPosition:(NSNumber *_Nullable)position
+{
+  if (!position) {
+    return;
+  }
+
+  auto emitter = std::static_pointer_cast<const TxcPlayerViewEventEmitter>(_eventEmitter);
+  if (!emitter) {
+    return;
+  }
+
+  TxcPlayerViewEventEmitter::OnProgress event{
+    .position = position.doubleValue
+  };
+  emitter->onProgress(event);
+}
+
 - (void)emitProgressWithParam:(NSDictionary *)param
 {
   NSTimeInterval now = CACurrentMediaTime();
@@ -621,6 +648,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
   }
 
   [self emitChangeWithType:@"progress" code:nil message:nil position:progress duration:duration buffered:playable];
+  [self emitProgressPosition:progress];
 }
 
 - (void)superPlayerFullScreenChanged:(SuperPlayerView *)player

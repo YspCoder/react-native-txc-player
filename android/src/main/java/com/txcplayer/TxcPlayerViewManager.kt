@@ -34,6 +34,10 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
     view.setAutoplay(value)
   }
 
+  override fun setPaused(view: TxcPlayerView, value: Boolean) {
+    view.setPaused(value)
+  }
+
   override fun setSource(view: TxcPlayerView, value: ReadableMap?) {
     view.setSource(value)
   }
