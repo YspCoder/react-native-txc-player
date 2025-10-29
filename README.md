@@ -144,6 +144,35 @@ Commands.pause(ref);
 Commands.resume(ref);
 Commands.reset(ref); // stops and resets the underlying native player
 Commands.seek(ref, 42); // jump to 42 seconds (best-effort)
+Commands.destroy(ref); // releases the native player instance and clears its source
+```
+
+### Auto-destroy helpers
+
+For list or carousel UIs where you want to automatically release the previously playing instance when a new cell becomes active, use the `useTxcPlayerAutoDestroy` hook. It destroys the native player when the component unmounts and (by default) ensures only one player stays active at a time.
+
+```tsx
+import { useRef, useMemo } from 'react';
+import {
+  TxcPlayerView,
+  type TxcPlayerViewRef,
+  useTxcPlayerAutoDestroy,
+} from 'react-native-txc-player';
+
+function FeedPlayer({ itemId, activeId, source }: Props) {
+  const ref = useRef<TxcPlayerViewRef>(null);
+  const isActive = useMemo(() => activeId === itemId, [activeId, itemId]);
+
+  useTxcPlayerAutoDestroy(ref, { active: isActive, destroyOnDeactivate: true, exclusive: true });
+
+  return (
+    <TxcPlayerView
+      ref={ref}
+      paused={!isActive}
+      source={source}
+    />
+  );
+}
 ```
 
 ## Events

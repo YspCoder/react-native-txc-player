@@ -224,6 +224,9 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   fun resumePlayback() {
     if (isReleased || pausedByProp) return
     UiThreadUtil.runOnUiThread {
+      if (hasStartedPlayback) {
+        coverView.visibility = View.GONE
+      }
       if (!hasStartedPlayback) {
         val source = currentSource ?: return@runOnUiThread
         applyPlayerConfiguration()
@@ -238,6 +241,19 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     stopPlayback()
     if (!pausedByProp) {
       maybeStartPlayback()
+    }
+  }
+
+  fun destroyPlayback() {
+    stopPlayback()
+    currentSource = null
+    hasStartedPlayback = false
+    handler.removeCallbacksAndMessages(null)
+    watermarkRunnable = null
+    UiThreadUtil.runOnUiThread {
+      coverView.visibility = View.GONE
+      coverView.controller = null
+      coverView.setImageURI(null, null)
     }
   }
 
@@ -318,6 +334,10 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
 
   private fun loadCover(url: String?) {
     if (url.isNullOrBlank()) {
+      coverView.visibility = View.GONE
+      return
+    }
+    if (hasStartedPlayback) {
       coverView.visibility = View.GONE
       return
     }

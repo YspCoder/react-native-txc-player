@@ -11,6 +11,7 @@ export default function App() {
 
   const ref = useRef<TxcPlayerViewRef>(null);
   const [ready, setReady] = useState(false);
+  const [playerKey, setPlayerKey] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -37,12 +38,13 @@ export default function App() {
           >
             <TxcPlayerView
               ref={ref}
+              key={playerKey}
               paused={!isPlaying}
               source={{
                 appId: '1500024012',
-                fileId: '3270835013523246329',
+                fileId: '3270835013523263935',
                 psign:
-                  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI0NjMyOSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjE1MzI5NTEsImV4cGlyZVRpbWVTdGFtcCI6MTc2MTc5MjE1MSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjkwMmQwOTciLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNDYzMjlfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.AaJvBG3FqMRbu-9MXylErhlYlRkuiIzhUr8AMIWvBqM'
+                  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI2MzkzNSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjExMjY2MzEsImV4cGlyZVRpbWVTdGFtcCI6MTc2MTM4NTgzMSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjhmYzlkNjciLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNjM5MzVfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.QLv7BX3KWIxMmON_p34v8IuPbwKvFYGggsazSy6TqAo'
               }}
               config={{
                 hideFullscreenButton: true,
@@ -114,6 +116,20 @@ export default function App() {
           style={styles.seekButton}
         >
           <Text style={styles.seekButtonText}>+15s</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            if (ref.current) {
+              Commands.destroy(ref.current);
+            }
+            setIsPlaying(false);
+            setPosition(0);
+            setDuration(0);
+            setPlayerKey((value) => value + 1);
+          }}
+          style={styles.seekButton}
+        >
+          <Text style={styles.seekButtonText}>Destroy</Text>
         </Pressable>
       </View>
     </View>

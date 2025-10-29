@@ -394,14 +394,27 @@ static UIColor *TXCColorFromHexString(NSString *input)
   dispatch_async(dispatch_get_main_queue(), ^{
     if (self->_coverURLString.length == 0) {
       self.playerView.coverImageView.image = nil;
+      self.playerView.coverImageView.hidden = YES;
+      return;
+    }
+    if (self->_hasStartedPlayback) {
+      self.playerView.coverImageView.hidden = YES;
       return;
     }
     NSURL *url = [NSURL URLWithString:self->_coverURLString];
     if (!url) {
+      self.playerView.coverImageView.hidden = YES;
       return;
     }
     self.playerView.coverImageView.hidden = NO;
     [self.playerView.coverImageView sd_setImageWithURL:url placeholderImage:nil options:SDWebImageAvoidDecodeImage];
+  });
+}
+
+- (void)hideCoverImageIfNeeded
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self.playerView.coverImageView.hidden = YES;
   });
 }
 
@@ -489,6 +502,8 @@ static UIColor *TXCColorFromHexString(NSString *input)
     [self resume];
   } else if ([commandName isEqualToString:@"reset"]) {
     [self reset];
+  } else if ([commandName isEqualToString:@"destroy"]) {
+    [self destroy];
   } else if ([commandName isEqualToString:@"seek"]) {
     NSNumber *value = args.count > 0 ? args[0] : nil;
     if ([value isKindOfClass:[NSNumber class]]) {
@@ -502,7 +517,13 @@ static UIColor *TXCColorFromHexString(NSString *input)
 #pragma mark - 控制 & 播放
 
 - (void)pause { [_playerView pause]; }
-- (void)resume { [_playerView resume]; }
+- (void)resume
+{
+  [_playerView resume];
+  if (_hasStartedPlayback) {
+    [self hideCoverImageIfNeeded];
+  }
+}
 - (void)reset
 {
   [_playerView resetPlayer];
@@ -511,6 +532,21 @@ static UIColor *TXCColorFromHexString(NSString *input)
   if (!_paused) {
     [self maybePlay];
   }
+}
+
+- (void)destroy
+{
+  [_playerView resetPlayer];
+  _shouldStartPlayback = NO;
+  _hasStartedPlayback = NO;
+  _source = nil;
+  _coverURLString = nil;
+  _watermarkConfig = nil;
+  _externalSubtitleModels = nil;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self.playerView.coverImageView.image = nil;
+    self.playerView.coverImageView.hidden = YES;
+  });
 }
 
 - (void)seekToSeconds:(double)seconds
@@ -560,7 +596,6 @@ static UIColor *TXCColorFromHexString(NSString *input)
     model.videoURL = url;
     [_playerView playWithModelNeedLicence:model];
     _shouldStartPlayback = NO;
-    _hasStartedPlayback = YES;
     [self scheduleApplyVodConfigIfNeeded];
     return;
   }
@@ -595,7 +630,6 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
     [_playerView playWithModelNeedLicence:model];
     _shouldStartPlayback = NO;
-    _hasStartedPlayback = YES;
     [self scheduleApplyVodConfigIfNeeded];
     return;
   }
@@ -679,6 +713,10 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
   [self emitChangeWithType:@"progress" code:nil message:nil position:progress duration:duration buffered:playable];
   [self emitProgressPosition:progress];
+  if (!_hasStartedPlayback) {
+    _hasStartedPlayback = YES;
+    [self hideCoverImageIfNeeded];
+  }
 }
 
 - (void)superPlayerFullScreenChanged:(SuperPlayerView *)player

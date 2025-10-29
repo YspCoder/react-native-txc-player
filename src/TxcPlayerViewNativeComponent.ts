@@ -75,10 +75,11 @@ interface NativeCommands {
   resume(ref: React.ElementRef<NativeComponent>): void;
   reset(ref: React.ElementRef<NativeComponent>): void;
   seek(ref: React.ElementRef<NativeComponent>, position: Float): void;
+  destroy(ref: React.ElementRef<NativeComponent>): void;
 }
 
 export const Commands = codegenNativeCommands<NativeCommands>({
-  supportedCommands: ['pause', 'resume', 'reset', 'seek'],
+  supportedCommands: ['pause', 'resume', 'reset', 'seek', 'destroy'],
 });
 
 export default codegenNativeComponent<NativeProps>('TxcPlayerView', {

@@ -47,6 +47,7 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
       "pause" -> view.pausePlayback()
       "resume" -> view.resumePlayback()
       "reset" -> view.resetPlayback()
+      "destroy" -> view.destroyPlayback()
       "seek" -> {
         val position = args?.takeIf { it.size() > 0 }?.getDouble(0)
         if (position != null) {
@@ -67,6 +68,7 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
           view.seekTo(position)
         }
       }
+      5 -> view.destroyPlayback()
     }
   }
 
@@ -75,7 +77,8 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
       "pause" to 1,
       "resume" to 2,
       "reset" to 3,
-      "seek" to 4
+      "seek" to 4,
+      "destroy" to 5
     )
   }
 
