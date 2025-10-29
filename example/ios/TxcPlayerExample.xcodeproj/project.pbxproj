@@ -276,7 +276,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.qlzy.dramamax;
+				PRODUCT_BUNDLE_IDENTIFIER = com.qfzy.app.dramaflix;
 				PRODUCT_NAME = TxcPlayerExample;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -307,7 +307,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.qlzy.dramamax;
+				PRODUCT_BUNDLE_IDENTIFIER = com.qfzy.app.dramaflix;
 				PRODUCT_NAME = TxcPlayerExample;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;

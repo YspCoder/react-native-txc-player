@@ -17,8 +17,8 @@ export default function App() {
 
   useEffect(() => {
     setTXCLicense(
-      'https://license.vod2.myqcloud.com/license/v2/1314161253_1/v_cube.license',
-      '99c843cd9e1a46a589fbd1a76cd244f6'
+      '',
+      ''
     );
     setReady(true);
     setIsPlaying(true);
@@ -37,13 +37,12 @@ export default function App() {
           >
             <TxcPlayerView
               ref={ref}
-              autoplay
               paused={!isPlaying}
               source={{
                 appId: '1500024012',
-                fileId: '3270835013523263935',
+                fileId: '3270835013523246329',
                 psign:
-                  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI2MzkzNSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjExMjY2MzEsImV4cGlyZVRpbWVTdGFtcCI6MTc2MTM4NTgzMSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjhmYzlkNjciLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNjM5MzVfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.QLv7BX3KWIxMmON_p34v8IuPbwKvFYGggsazSy6TqAo',
+                  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI0NjMyOSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjE1MzI5NTEsImV4cGlyZVRpbWVTdGFtcCI6MTc2MTc5MjE1MSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjkwMmQwOTciLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNDYzMjlfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.AaJvBG3FqMRbu-9MXylErhlYlRkuiIzhUr8AMIWvBqM'
               }}
               config={{
                 hideFullscreenButton: true,

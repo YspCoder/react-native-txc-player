@@ -61,7 +61,6 @@ export type ProgressEvent = Readonly<{
 }>;
 
 interface NativeProps extends ViewProps {
-  autoplay?: boolean;
   paused?: WithDefault<boolean, false>;
   source?: Source;
   config?: PlayerConfig;

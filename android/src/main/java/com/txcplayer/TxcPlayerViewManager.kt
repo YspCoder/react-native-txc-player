@@ -30,10 +30,6 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
     return TxcPlayerView(context)
   }
 
-  override fun setAutoplay(view: TxcPlayerView, value: Boolean) {
-    view.setAutoplay(value)
-  }
-
   override fun setPaused(view: TxcPlayerView, value: Boolean) {
     view.setPaused(value)
   }

@@ -39,32 +39,21 @@ setTXCLicense('https://your-license-url', 'your-license-key');
 ```tsx
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
-import {
-  Commands,
-  TxcPlayerView,
-  type TxcPlayerViewRef,
-} from 'react-native-txc-player';
+import { TxcPlayerView, type TxcPlayerViewRef } from 'react-native-txc-player';
 
 export default function Player() {
   const ref = useRef<TxcPlayerViewRef>(null);
   const [playing, setPlaying] = useState(true);
 
   const toggle = () => {
-    const view = ref.current;
-    if (!view) return;
-    if (playing) {
-      Commands.pause(view);
-    } else {
-      Commands.resume(view);
-    }
-    setPlaying(!playing);
+    setPlaying((current) => !current);
   };
 
   return (
     <Pressable style={styles.player} onPress={toggle}>
       <TxcPlayerView
         ref={ref}
-        autoplay
+        paused={!playing}
         source={{
           appId: '1500039285',
           fileId: '5145403699454155159',
@@ -121,10 +110,11 @@ const styles = StyleSheet.create({
 
 | Prop | Type | Description |
 | --- | --- | --- |
-| `autoplay` | `boolean` | Autoplay when a new source is assigned. Defaults to `false`. |
+| `paused` | `boolean` (default `false`) | When `true` the player is paused; set to `false` to play/resume. |
 | `source` | `{ url?: string; appId?: string; fileId?: string; psign?: string }` | Either pass a direct URL **or** a VOD `fileId` with the corresponding `appId`/`psign`. |
 | `config` | `PlayerConfig` | Optional UI/runtime tweaks (see below). |
 | `onPlayerEvent` | `(event) => void` | Receives events such as `begin`, `firstFrame`, `progress`, `end`, `loadingEnd`, `error`, `subtitleNotice`.  The payload also contains `code`/`message` when available. |
+| `onProgress` | `(event) => void` | Fires with `{ position }` updates for the current playback position (in seconds). |
 
 `PlayerConfig`
 

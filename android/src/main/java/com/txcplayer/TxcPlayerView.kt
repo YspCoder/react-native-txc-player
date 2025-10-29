@@ -41,7 +41,6 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   private val player = TXVodPlayer(context)
 
   private var isReleased = false
-  private var shouldAutoplay: Boolean = true
   private var pausedByProp: Boolean = false
   private var currentSource: Source? = null
   private var config: PlayerConfig = PlayerConfig()
@@ -163,12 +162,6 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     reactContext?.addLifecycleEventListener(this)
   }
 
-  fun setAutoplay(value: Boolean) {
-    shouldAutoplay = value
-    player.setAutoPlay(value)
-    maybeStartPlayback()
-  }
-
   fun setPaused(value: Boolean) {
     if (pausedByProp == value) return
     pausedByProp = value
@@ -243,7 +236,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
 
   fun resetPlayback() {
     stopPlayback()
-    if (shouldAutoplay) {
+    if (!pausedByProp) {
       maybeStartPlayback()
     }
   }
@@ -257,7 +250,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   }
 
   private fun maybeStartPlayback() {
-    if (isReleased || !shouldAutoplay || pausedByProp) return
+    if (isReleased || pausedByProp) return
     val source = currentSource ?: return
     UiThreadUtil.runOnUiThread {
       applyPlayerConfiguration()
@@ -472,7 +465,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   }
 
   override fun onHostResume() {
-    if (!isReleased && shouldAutoplay && !pausedByProp) {
+    if (!isReleased && !pausedByProp) {
       player.resume()
     }
     playerView.onResume()

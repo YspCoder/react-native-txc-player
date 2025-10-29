@@ -113,8 +113,9 @@ static UIColor *TXCColorFromHexString(NSString *input)
 @end
 
 @implementation TxcPlayerView {
-  BOOL _autoplay;
   BOOL _paused;
+  BOOL _shouldStartPlayback;
+  BOOL _hasStartedPlayback;
   NSDictionary *_Nullable _source;
   BOOL _hideFullscreenButton;
   BOOL _hideFloatWindow;
@@ -154,8 +155,9 @@ static UIColor *TXCColorFromHexString(NSString *input)
     self.contentView = _playerView;
     self.clipsToBounds = YES;
 
-    _autoplay = YES; // 默认自动播放
     _paused = NO;
+    _shouldStartPlayback = NO;
+    _hasStartedPlayback = NO;
     _hideFullscreenButton = NO;
     _hideFloatWindow = NO;
     _hidePipButton = NO;
@@ -191,12 +193,12 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
 - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
 {
-  const auto &oldViewProps = *std::static_pointer_cast<TxcPlayerViewProps const>(_props);
   const auto &newViewProps = *std::static_pointer_cast<TxcPlayerViewProps const>(props);
 
-  _autoplay = newViewProps.autoplay;
   BOOL wasPaused = _paused;
   _paused = newViewProps.paused;
+
+  NSDictionary *previousSource = _source;
 
   // source（对象，需要从 RawValue 转 NSDictionary 使用）
   NSMutableDictionary *dict = [NSMutableDictionary dictionary];
@@ -212,7 +214,21 @@ static UIColor *TXCColorFromHexString(NSString *input)
   if (!newViewProps.source.psign.empty())  {
     dict[@"psign"]  = RCTNSStringFromString(newViewProps.source.psign);
   }
-  _source = dict;
+  NSDictionary *newSource = dict.count > 0 ? [dict copy] : nil;
+  BOOL sourceChanged = NO;
+  if (previousSource != newSource) {
+    if (!previousSource || !newSource) {
+      sourceChanged = YES;
+    } else {
+      sourceChanged = ![previousSource isEqualToDictionary:newSource];
+    }
+  }
+  _source = newSource;
+
+  if (sourceChanged) {
+    _shouldStartPlayback = (_source != nil);
+    _hasStartedPlayback = NO;
+  }
 
   _hideFullscreenButton = NO;
   _hideFloatWindow = NO;
@@ -230,7 +246,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
   _externalSubtitleModels = nil;
 
   const auto &cfg = newViewProps.config;
-  _hideFullscreenButton = cfg.hideFullscreenButton || cfg.hideFullScreenButton;
+  _hideFullscreenButton = cfg.hideFullscreenButton;
   _hideFloatWindow = cfg.hideFloatWindowButton;
   _hidePipButton = cfg.hidePipButton;
   _hideBackButton = cfg.hideBackButton;
@@ -304,7 +320,7 @@ static UIColor *TXCColorFromHexString(NSString *input)
   [super updateProps:props oldProps:oldProps];
 
   // 自动播放
-  if (_autoplay && !_paused) {
+  if (!_paused) {
     [self maybePlay];
   }
 
@@ -487,7 +503,15 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
 - (void)pause { [_playerView pause]; }
 - (void)resume { [_playerView resume]; }
-- (void)reset  { [_playerView resetPlayer]; }
+- (void)reset
+{
+  [_playerView resetPlayer];
+  _hasStartedPlayback = NO;
+  _shouldStartPlayback = (_source != nil);
+  if (!_paused) {
+    [self maybePlay];
+  }
+}
 
 - (void)seekToSeconds:(double)seconds
 {
@@ -514,7 +538,9 @@ static UIColor *TXCColorFromHexString(NSString *input)
 
 - (void)maybePlay
 {
-  if (!_autoplay || !_source || _paused) return;
+  if (!_source || _paused || !_shouldStartPlayback) {
+    return;
+  }
 
   SuperPlayerModel *model = [SuperPlayerModel new];
 
@@ -533,6 +559,8 @@ static UIColor *TXCColorFromHexString(NSString *input)
   if ([url isKindOfClass:[NSString class]] && url.length > 0) {
     model.videoURL = url;
     [_playerView playWithModelNeedLicence:model];
+    _shouldStartPlayback = NO;
+    _hasStartedPlayback = YES;
     [self scheduleApplyVodConfigIfNeeded];
     return;
   }
@@ -566,6 +594,8 @@ static UIColor *TXCColorFromHexString(NSString *input)
     model.videoId = vid;
 
     [_playerView playWithModelNeedLicence:model];
+    _shouldStartPlayback = NO;
+    _hasStartedPlayback = YES;
     [self scheduleApplyVodConfigIfNeeded];
     return;
   }
