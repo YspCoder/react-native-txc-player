@@ -6,6 +6,7 @@
 #import <react/renderer/components/TxcPlayerViewSpec/RCTComponentViewHelpers.h>
 
 #import <React/RCTLog.h>
+#import <React/RCTConvert.h>
 
 #import <QuartzCore/QuartzCore.h>
 #import <limits.h>
