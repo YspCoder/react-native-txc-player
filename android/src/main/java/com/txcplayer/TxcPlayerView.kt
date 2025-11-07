@@ -35,6 +35,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   private var currentSource: Source? = null
   private var playbackRate = 1.0f
   private var lastProgressTs = 0L
+  private var isPreloading = false
 
   private data class Source(
     val url: String?,
@@ -47,24 +48,62 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     override fun onPlayEvent(player: TXVodPlayer?, event: Int, bundle: Bundle?) {
       when (event) {
         TXLiveConstants.PLAY_EVT_RCV_FIRST_I_FRAME -> {
-          dispatchEvent("firstFrame", event, bundle.eventMessage())
+          dispatchEvent(
+            type = "firstFrame",
+            eventId = event,
+            code = event,
+            message = bundle.eventMessage()
+          )
         }
         TXLiveConstants.PLAY_EVT_PLAY_BEGIN -> {
-          dispatchEvent("begin", event, bundle.eventMessage())
+          if (!handlePrepared(event, bundle)) {
+            dispatchEvent(
+              type = "begin",
+              eventId = event,
+              code = event,
+              message = bundle.eventMessage()
+            )
+          }
         }
         TXLiveConstants.PLAY_EVT_PLAY_END -> {
           hasStartedPlayback = false
-          dispatchEvent("end", event, bundle.eventMessage())
+          isPreloading = false
+          dispatchEvent(
+            type = "end",
+            eventId = event,
+            code = event,
+            message = bundle.eventMessage()
+          )
+        }
+        TXLiveConstants.PLAY_EVT_VOD_LOADING_START -> {
+          dispatchEvent(
+            type = "loadingStart",
+            eventId = event,
+            code = event,
+            message = bundle.eventMessage()
+          )
         }
         TXLiveConstants.PLAY_EVT_VOD_LOADING_END -> {
-          dispatchEvent("loadingEnd", event, bundle.eventMessage())
+          if (!handlePrepared(event, bundle)) {
+            dispatchEvent(
+              type = "loadingEnd",
+              eventId = event,
+              code = event,
+              message = bundle.eventMessage()
+            )
+          }
         }
         TXLiveConstants.PLAY_EVT_PLAY_PROGRESS -> {
           handleProgressEvent(bundle)
         }
         else -> {
           if (event < 0) {
-            dispatchEvent("error", event, bundle?.eventMessage())
+            dispatchEvent(
+              type = "error",
+              eventId = event,
+              code = event,
+              message = bundle?.eventMessage()
+            )
           }
         }
       }
@@ -101,6 +140,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     val fileId = map.getStringSafe("fileId")
     val psign = map.getStringSafe("psign")
     currentSource = Source(url, appId, fileId, psign)
+    isPreloading = false
     maybeStartPlayback()
   }
 
@@ -109,6 +149,17 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     playbackRate = clamped.toFloat()
     UiThreadUtil.runOnUiThread {
       player.setRate(playbackRate)
+    }
+  }
+
+  fun preparePlayback() {
+    if (isReleased) return
+    val source = currentSource ?: return
+    UiThreadUtil.runOnUiThread {
+      if (isReleased) return@runOnUiThread
+      isPreloading = true
+      player.setAutoPlay(false)
+      startPlayback(source, autoPlay = false)
     }
   }
 
@@ -122,8 +173,10 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     UiThreadUtil.runOnUiThread {
       if (!hasStartedPlayback) {
         val source = currentSource ?: return@runOnUiThread
+        player.setAutoPlay(true)
         startPlayback(source)
       } else {
+        isPreloading = false
         player.resume()
       }
     }
@@ -140,6 +193,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     stopPlayback()
     currentSource = null
     hasStartedPlayback = false
+    isPreloading = false
   }
 
   fun seekTo(positionSeconds: Double) {
@@ -154,16 +208,22 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     UiThreadUtil.runOnUiThread { startPlayback(source) }
   }
 
-  private fun startPlayback(source: Source) {
+  private fun startPlayback(source: Source, autoPlay: Boolean = true) {
     stopPlayback()
     player.setPlayerView(playerView)
+    player.setAutoPlay(autoPlay)
     var result: Int? = null
     if (!source.url.isNullOrBlank()) {
       result = player.startVodPlay(source.url)
     } else if (!source.fileId.isNullOrBlank() && !source.appId.isNullOrBlank()) {
       val appIdValue = source.appId.toLongOrNull()
       if (appIdValue == null || appIdValue <= 0L) {
-        dispatchEvent("error", -1, "Invalid appId for fileId playback")
+        dispatchEvent(
+          type = "error",
+          eventId = -1,
+          code = -1,
+          message = "Invalid appId for fileId playback"
+        )
         return
       }
       try {
@@ -171,36 +231,59 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
         player.startVodPlay(params)
         result = 0
       } catch (e: Exception) {
-        dispatchEvent("error", -1, e.message ?: "Invalid fileId source")
+        dispatchEvent(
+          type = "error",
+          eventId = -1,
+          code = -1,
+          message = e.message ?: "Invalid fileId source"
+        )
         return
       }
     } else {
-      dispatchEvent("error", -1, "Invalid source payload")
+      dispatchEvent(
+        type = "error",
+        eventId = -1,
+        code = -1,
+        message = "Invalid source payload"
+      )
       return
     }
 
     if (result != null && result < 0) {
-      dispatchEvent("error", result, "Failed to start playback (TXVodPlayer)")
+      dispatchEvent(
+        type = "error",
+        eventId = result,
+        code = result,
+        message = "Failed to start playback (TXVodPlayer)"
+      )
+      player.setAutoPlay(true)
+      isPreloading = false
       return
     }
 
     player.setRate(playbackRate)
     hasStartedPlayback = true
+    lastProgressTs = 0L
+    isPreloading = !autoPlay
+    if (!autoPlay) {
+      UiThreadUtil.runOnUiThread { player.pause() }
+    }
   }
 
   private fun stopPlayback() {
     player.stopPlay(true)
     hasStartedPlayback = false
+    isPreloading = false
+    lastProgressTs = 0L
   }
 
   private fun handleProgressEvent(bundle: Bundle?) {
-    val progressMs = bundle?.getInt(TXVodConstants.EVT_PLAY_PROGRESS)?.times(1000) ?: -1
-    val durationMs = bundle?.getInt(TXVodConstants.EVT_PLAY_DURATION)?.times(1000) ?: -1
-    val playableMs = bundle?.getInt(TXVodConstants.EVT_PLAYABLE_DURATION)?.times(1000)
-      ?: bundle?.getInt(EVT_PLAYABLE_DURATION)?.times(1000)
-      ?: -1
+    val metrics = bundle.extractPlaybackMetrics()
 
-    if (progressMs < 0 && durationMs < 0 && playableMs < 0) {
+    if (metrics.positionSeconds == null &&
+      metrics.durationSeconds == null &&
+      metrics.bufferedSeconds == null
+    ) {
       return
     }
     val now = SystemClock.elapsedRealtime()
@@ -209,24 +292,23 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     }
     lastProgressTs = now
 
-    val positionSeconds = if (progressMs >= 0) progressMs / 1000.0 else null
-    val durationSeconds = when {
-      durationMs >= 0 -> durationMs / 1000.0
-      player.duration > 0 -> player.duration.toDouble()
-      else -> null
-    }
-    val bufferedSeconds = if (playableMs >= 0) playableMs / 1000.0 else null
+    val positionSeconds = metrics.positionSeconds
+    val durationSeconds = metrics.durationSeconds
+      ?: if (player.duration > 0) player.duration.toDouble() else null
+    val bufferedSeconds = metrics.bufferedSeconds
     dispatchEvent(
       type = "progress",
+      eventId = TXLiveConstants.PLAY_EVT_PLAY_PROGRESS,
       positionSeconds = positionSeconds,
       durationSeconds = durationSeconds,
       bufferedSeconds = bufferedSeconds
     )
-    positionSeconds?.let { dispatchProgress(it) }
+    dispatchProgress(positionSeconds, durationSeconds, bufferedSeconds)
   }
 
   private fun dispatchEvent(
     type: String,
+    eventId: Int? = null,
     code: Int? = null,
     message: String? = null,
     positionSeconds: Double? = null,
@@ -236,6 +318,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     val map = Arguments.createMap().apply {
       putString("type", type)
       code?.let { putInt("code", it) }
+      eventId?.let { putInt("event", it) }
       message?.let { putString("message", it) }
       positionSeconds?.let { putDouble("position", it) }
       durationSeconds?.let { putDouble("duration", it) }
@@ -244,11 +327,76 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     emitEvent("onPlayerEvent", map)
   }
 
-  private fun dispatchProgress(positionSeconds: Double) {
+  private fun dispatchProgress(
+    positionSeconds: Double?,
+    durationSeconds: Double?,
+    bufferedSeconds: Double?
+  ) {
+    if (positionSeconds == null && durationSeconds == null && bufferedSeconds == null) {
+      return
+    }
     val map = Arguments.createMap().apply {
-      putDouble("position", positionSeconds)
+      putDouble("position", positionSeconds ?: 0.0)
+      durationSeconds?.let { putDouble("duration", it) }
+      bufferedSeconds?.let { putDouble("buffered", it) }
     }
     emitEvent("onProgress", map)
+  }
+
+  private fun handlePrepared(event: Int, bundle: Bundle?): Boolean {
+    if (!isPreloading) {
+      return false
+    }
+    isPreloading = false
+    UiThreadUtil.runOnUiThread {
+      player.pause()
+      player.setAutoPlay(true)
+    }
+    val metrics = bundle.extractPlaybackMetrics()
+    dispatchEvent(
+      type = "prepared",
+      eventId = event,
+      code = event,
+      message = bundle.eventMessage(),
+      positionSeconds = metrics.positionSeconds,
+      durationSeconds = metrics.durationSeconds,
+      bufferedSeconds = metrics.bufferedSeconds
+    )
+    dispatchProgress(metrics.positionSeconds, metrics.durationSeconds, metrics.bufferedSeconds)
+    return true
+  }
+
+  private data class PlaybackMetrics(
+    val positionSeconds: Double?,
+    val durationSeconds: Double?,
+    val bufferedSeconds: Double?
+  )
+
+  private fun Bundle?.extractPlaybackMetrics(): PlaybackMetrics {
+    if (this == null) {
+      return PlaybackMetrics(null, null, null)
+    }
+    val progressMs = when {
+      containsKey(TXVodConstants.EVT_PLAY_PROGRESS) -> getInt(TXVodConstants.EVT_PLAY_PROGRESS) * 1000
+      containsKey("EVT_PLAY_PROGRESS_MS") -> getInt("EVT_PLAY_PROGRESS_MS")
+      else -> -1
+    }
+    val durationMs = when {
+      containsKey(TXVodConstants.EVT_PLAY_DURATION) -> getInt(TXVodConstants.EVT_PLAY_DURATION) * 1000
+      containsKey("EVT_PLAY_DURATION_MS") -> getInt("EVT_PLAY_DURATION_MS")
+      else -> -1
+    }
+    val playableMs = when {
+      containsKey(TXVodConstants.EVT_PLAYABLE_DURATION) ->
+        getInt(TXVodConstants.EVT_PLAYABLE_DURATION) * 1000
+      containsKey(EVT_PLAYABLE_DURATION) -> getInt(EVT_PLAYABLE_DURATION) * 1000
+      containsKey("EVT_PLAYABLE_DURATION_MS") -> getInt("EVT_PLAYABLE_DURATION_MS")
+      else -> -1
+    }
+    val positionSeconds = if (progressMs >= 0) progressMs / 1000.0 else null
+    val durationSeconds = if (durationMs >= 0) durationMs / 1000.0 else null
+    val bufferedSeconds = if (playableMs >= 0) playableMs / 1000.0 else null
+    return PlaybackMetrics(positionSeconds, durationSeconds, bufferedSeconds)
   }
 
   private fun emitEvent(eventName: String, params: WritableMap?) {
@@ -271,11 +419,8 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     player.setPlayerView(null as TXCloudVideoView?)
     playerView.onDestroy()
     isReleased = true
+    isPreloading = false
     reactContext?.removeLifecycleEventListener(this)
-  }
-
-  override fun onDetachedFromWindow() {
-    super.onDetachedFromWindow()
   }
 
   override fun onHostResume() {

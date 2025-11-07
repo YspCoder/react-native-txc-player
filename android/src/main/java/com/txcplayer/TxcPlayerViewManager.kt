@@ -74,6 +74,13 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
           view.seekTo(position)
         }
       }
+      "setPlaybackRate" -> {
+        val rate = args?.takeIf { it.size() > 0 }?.getDouble(0)
+        if (rate != null) {
+          view.setPlaybackRate(rate)
+        }
+      }
+      "prepare" -> view.preparePlayback()
     }
   }
 
@@ -89,6 +96,13 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
         }
       }
       5 -> view.destroyPlayback()
+      6 -> view.preparePlayback()
+      7 -> {
+        val rate = args?.takeIf { it.size() > 0 }?.getDouble(0)
+        if (rate != null) {
+          view.setPlaybackRate(rate)
+        }
+      }
     }
   }
 
@@ -98,7 +112,9 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
       "resume" to 2,
       "reset" to 3,
       "seek" to 4,
-      "destroy" to 5
+      "destroy" to 5,
+      "prepare" to 6,
+      "setPlaybackRate" to 7
     )
   }
 
