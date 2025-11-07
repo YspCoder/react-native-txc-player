@@ -1,135 +1,152 @@
-import { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Alert, Text, Pressable } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
-  setTXCLicense,
-  TxcPlayerView,
   Commands,
+  TxcPlayerView,
+  setTXCLicense,
+  type ChangeEvent,
+  type ProgressEvent,
   type TxcPlayerViewRef,
 } from 'react-native-txc-player';
 
-export default function App() {
+const PLAYER_SOURCE = {
+  appId: '1500024012',
+  fileId: '3270835013523247456',
+  psign:
+    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI0NzQ1NiIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjI0Mjk3MzUsImV4cGlyZVRpbWVTdGFtcCI6MTc2MjY4ODkzMSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjkxMDdmYTMiLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNDc0NTZfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.wPs1HUNmpytt0zugsPUAEym11rl1GnI-ZySwHhFMk7w',
+} as const;
 
-  const ref = useRef<TxcPlayerViewRef>(null);
+type PlayerStatus = 'idle' | 'buffering' | 'playing' | 'paused' | 'ended' | 'error';
+
+export default function App() {
+  const playerRef = useRef<TxcPlayerViewRef>(null);
   const [ready, setReady] = useState(false);
-  const [playerKey, setPlayerKey] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [status, setStatus] = useState<PlayerStatus>('playing');
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [message, setMessage] = useState<string | null>(null);
+  const [key, setKey] = useState(0);
 
   useEffect(() => {
     setTXCLicense(
-      '',
-      ''
+      'https://license.vod2.myqcloud.com/license/v2/1314161253_1/v_cube.license',
+      '99c843cd9e1a46a589fbd1a76cd244f6'
     );
     setReady(true);
-    setIsPlaying(true);
   }, []);
 
-  // 2) 只有 ready 才渲染播放器（防止先渲染后设置导致校验失败）
+  const playing = useMemo(() => status === 'playing' || status === 'buffering', [status]);
+
+  const handlePlayerEvent = useCallback((event: { nativeEvent: ChangeEvent }) => {
+    const evt = event.nativeEvent;
+    setMessage(evt.message ?? null);
+
+    console.log(evt);
+    
+
+    if (typeof evt.duration === 'number') {
+      setDuration(evt.duration);
+    }
+
+    switch (evt.type) {
+      case 'firstFrame':
+      case 'begin':
+      case 'loadingEnd':
+        setStatus('playing');
+        break;
+      case 'end':
+        setStatus('ended');
+        break;
+      case 'error':
+        setStatus('error');
+        Alert.alert('播放错误', `code=${evt.code}, message=${evt.message}`);
+        break;
+      default:
+        break;
+    }
+  }, []);
+
+  const handleProgress = useCallback((event: { nativeEvent: ProgressEvent }) => {
+    const current = event.nativeEvent.position;
+    if (typeof current === 'number') {
+      setPosition(current);
+    }
+  }, []);
+
+  const togglePlayback = useCallback(() => {
+    if (status === 'playing') {
+      setStatus('paused');
+    } else {
+      setStatus('playing');
+    }
+  }, [status]);
+
+  const seekToStart = useCallback(() => {
+    if (playerRef.current) {
+      Commands.seek(playerRef.current, 0);
+    }
+  }, []);
+
+  const jumpForward = useCallback(() => {
+    if (!playerRef.current) {
+      return;
+    }
+    const target = duration > 0 ? Math.min(position + 15, duration) : position + 15;
+    Commands.seek(playerRef.current, target);
+  }, [duration, position]);
+
+  const destroyPlayer = useCallback(() => {
+    if (playerRef.current) {
+      Commands.destroy(playerRef.current);
+    }
+    setStatus('idle');
+    setPosition(0);
+    setDuration(0);
+    setMessage(null);
+    setKey((value) => value + 1);
+  }, []);
+
+  if (!ready) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.messageText}>正在初始化 License…</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {ready ? (
-        <>
-          <Pressable
-            onPress={() => {
-              setIsPlaying((prev) => !prev);
-            }}
-            style={styles.box}
-          >
-            <TxcPlayerView
-              ref={ref}
-              key={playerKey}
-              paused={!isPlaying}
-              source={{
-                appId: '1500024012',
-                fileId: '3270835013523263935',
-                psign:
-                  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI2MzkzNSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjExMjY2MzEsImV4cGlyZVRpbWVTdGFtcCI6MTc2MTM4NTgzMSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjhmYzlkNjciLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNjM5MzVfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.QLv7BX3KWIxMmON_p34v8IuPbwKvFYGggsazSy6TqAo'
-              }}
-              config={{
-                hideFullscreenButton: true,
-                hideFloatWindowButton: true,
-                hidePipButton: true,
-                hideBackButton: true,
-                hideResolutionButton: true,
-                hidePlayButton: true,
-                hideProgressBar: true,
-                autoHideProgressBar: true,
-                disableDownload: true,
-                maxBufferSize: 120,
-                maxPreloadSize: 20,
-                coverUrl: 'https://main.qcloudimg.com/raw/9a3f830b73fab9142c078f2c0c666cce.png',
-              }}
-              onPlayerEvent={(e: any) => {
-                const evt = e.nativeEvent;
-                console.log('[TXC event]', evt);
-                if (evt.type === 'begin' || evt.type === 'firstFrame') {
-                  setIsPlaying(true);
-                }
-                if (evt.type === 'end' || evt.type === 'error') {
-                  setIsPlaying(false);
-                }
-                if (evt.type === 'progress') {
-                  if (typeof evt.duration === 'number') {
-                    setDuration(evt.duration);
-                  }
-                }
-                if (evt.type === 'error') {
-                  Alert.alert(
-                    '播放错误',
-                    `code=${evt.code}, message=${evt.message}`
-                  );
-                }
-              }}
-              onProgress={(e: any) => {
-                const progress = e?.nativeEvent?.position;
-                if (typeof progress === 'number') {
-                  setPosition(progress);
-                }
-              }}
-              style={StyleSheet.absoluteFill}
-            />
-          </Pressable>
-        </>
-      ) : (
-        <Text style={{ color: '#fff' }}>正在初始化 License…</Text>
-      )}
-      <Text style={{ color: '#fff', padding: 12 }}>
-        {`当前位置: ${position.toFixed(1)}s / ${duration > 0 ? duration.toFixed(1) : '??'}s`}
-      </Text>
+    <View style={styles.container}>
+      <Pressable onPress={togglePlayback} style={styles.player}>
+        <TxcPlayerView
+          key={key}
+          ref={playerRef}
+          paused={!playing}
+          source={PLAYER_SOURCE}
+          onPlayerEvent={handlePlayerEvent}
+          onProgress={handleProgress}
+          style={StyleSheet.absoluteFill}
+        />
+      </Pressable>
+
+      <View style={styles.infoPanel}>
+        <Text style={styles.infoText}>{`状态：${status}`}</Text>
+        <Text style={styles.infoText}>
+          {`进度：${position.toFixed(1)}s / ${
+            duration > 0 ? duration.toFixed(1) : '??'
+          }s`}
+        </Text>
+        {!!message && <Text style={styles.infoText}>{`信息：${message}`}</Text>}
+      </View>
+
       <View style={styles.controls}>
-        <Pressable
-          onPress={() => {
-            if (!ref.current) return;
-            Commands.seek(ref.current, 0);
-          }}
-          style={styles.seekButton}
-        >
-          <Text style={styles.seekButtonText}>Seek 0s</Text>
+        <Pressable onPress={seekToStart} style={styles.controlButton}>
+          <Text style={styles.controlText}>Seek 0s</Text>
         </Pressable>
-        <Pressable
-          onPress={() => {
-            if (!ref.current) return;
-            const target = duration > 0 ? Math.min(position + 15, duration) : position + 15;
-            Commands.seek(ref.current, target);
-          }}
-          style={styles.seekButton}
-        >
-          <Text style={styles.seekButtonText}>+15s</Text>
+        <Pressable onPress={jumpForward} style={styles.controlButton}>
+          <Text style={styles.controlText}>+15s</Text>
         </Pressable>
-        <Pressable
-          onPress={() => {
-            if (ref.current) {
-              Commands.destroy(ref.current);
-            }
-            setIsPlaying(false);
-            setPosition(0);
-            setDuration(0);
-            setPlayerKey((value) => value + 1);
-          }}
-          style={styles.seekButton}
-        >
-          <Text style={styles.seekButtonText}>Destroy</Text>
+        <Pressable onPress={destroyPlayer} style={styles.controlButton}>
+          <Text style={styles.controlText}>Destroy</Text>
         </Pressable>
       </View>
     </View>
@@ -139,12 +156,27 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  center: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#000',
   },
-  box: {
+  player: {
     flex: 1,
     marginVertical: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  infoPanel: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  infoText: {
+    color: '#fff',
+    marginBottom: 4,
   },
   controls: {
     flexDirection: 'row',
@@ -152,15 +184,18 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 16,
   },
-  seekButton: {
+  controlButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.15)',
     marginHorizontal: 8,
   },
-  seekButtonText: {
+  controlText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  messageText: {
+    color: '#fff',
   },
 });

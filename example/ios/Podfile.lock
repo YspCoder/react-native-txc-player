@@ -8,7 +8,6 @@ PODS:
   - hermes-engine (0.81.1):
     - hermes-engine/Pre-built (= 0.81.1)
   - hermes-engine/Pre-built (0.81.1)
-  - Masonry (1.1.0)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -2341,19 +2340,8 @@ PODS:
     - React-perflogger (= 0.81.1)
     - React-utils (= 0.81.1)
     - SocketRocket
-  - SDWebImage (5.21.3):
-    - SDWebImage/Core (= 5.21.3)
-  - SDWebImage/Core (5.21.3)
   - SocketRocket (0.7.1)
-  - SuperPlayer (12.8.19667):
-    - Masonry
-    - SDWebImage
-    - SuperPlayer/Player (= 12.8.19667)
-  - SuperPlayer/Player (12.8.19667):
-    - Masonry
-    - SDWebImage
-    - TXLiteAVSDK_Player
-  - TxcPlayer (0.1.4):
+  - TxcPlayer (0.1.6):
     - boost
     - DoubleConversion
     - fast_float
@@ -2380,9 +2368,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - SocketRocket
-    - SuperPlayer
+    - TXLiteAVSDK_Player_Premium
     - Yoga
-  - TXLiteAVSDK_Player (12.8.19666)
+  - TXLiteAVSDK_Player_Premium (12.8.19666)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -2464,11 +2452,8 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - Masonry
-    - SDWebImage
     - SocketRocket
-    - SuperPlayer
-    - TXLiteAVSDK_Player
+    - TXLiteAVSDK_Player_Premium
 
 EXTERNAL SOURCES:
   boost:
@@ -2627,7 +2612,6 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 4f8246b1f6d79f625e0d99472d1f3a71da4d28ca
-  Masonry: 678fab65091a9290e40e2832a55e7ab731aad201
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: c4b9e2fd0ab200e3af72b013ed6113187c607077
   RCTRequired: e97dd5dafc1db8094e63bc5031e0371f092ae92a
@@ -2692,11 +2676,9 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 3eb9096cb139eb433965693bbe541d96eb3d3ec9
   ReactCodegen: 4d203eddf6f977caa324640a20f92e70408d648b
   ReactCommon: ce5d4226dfaf9d5dacbef57b4528819e39d3a120
-  SDWebImage: 16309af6d214ba3f77a7c6f6fdda888cb313a50a
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  SuperPlayer: 46b460ffb9685a005315fcca981795263a7955eb
-  TxcPlayer: ae59f17ad233f096305da61ebefcce7ee62df87d
-  TXLiteAVSDK_Player: b71e56e1401a42d16b4d9fef0d5ad088f60af876
+  TxcPlayer: 4253e664d4f3eb4f18d8ddd6c392d720b3039eb2
+  TXLiteAVSDK_Player_Premium: cf658483b8c4b9a5b2de638e69038721a4c20543
   Yoga: 11c9686a21e2cd82a094a723649d9f4507200fb0
 
 PODFILE CHECKSUM: 4d3c12088f1242c0fae9db6f950bfda11cb158e2

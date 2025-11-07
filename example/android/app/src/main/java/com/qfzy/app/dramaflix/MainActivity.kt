@@ -1,4 +1,4 @@
-package txcplayer.example
+package com.qfzy.app.dramaflix
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

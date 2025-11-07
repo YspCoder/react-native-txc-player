@@ -1,4 +1,4 @@
-package txcplayer.example
+package com.qfzy.app.dramaflix
 
 import android.app.Application
 import com.facebook.react.PackageList
