@@ -6,11 +6,17 @@ import {
 } from 'react-native';
 import type * as React from 'react';
 // @ts-ignore
-import type {Int32,Float,DirectEventHandler,WithDefault,} from 'react-native/Libraries/Types/CodegenTypes';
+import type {
+  Int32,
+  Float,
+  DirectEventHandler,
+  WithDefault,
+} from 'react-native/Libraries/Types/CodegenTypes';
 
 export type ChangeEvent = Readonly<{
   type: string;
   code?: Int32;
+  event?: Int32;
   message?: string;
   position?: Float;
   duration?: Float;
@@ -26,6 +32,8 @@ export type Source = Readonly<{
 
 export type ProgressEvent = Readonly<{
   position: Float;
+  duration?: Float;
+  buffered?: Float;
 }>;
 
 interface NativeProps extends ViewProps {
@@ -43,12 +51,21 @@ interface NativeCommands {
   resume(ref: React.ElementRef<NativeComponent>): void;
   reset(ref: React.ElementRef<NativeComponent>): void;
   seek(ref: React.ElementRef<NativeComponent>, position: Float): void;
-  destroy(ref: React.ElementRef<NativeComponent>): void;
   setPlaybackRate(ref: React.ElementRef<NativeComponent>, rate: Float): void;
+  prepare(ref: React.ElementRef<NativeComponent>): void;
+  destroy(ref: React.ElementRef<NativeComponent>): void;
 }
 
 export const Commands = codegenNativeCommands<NativeCommands>({
-  supportedCommands: ['pause', 'resume', 'reset', 'seek', 'destroy', 'setPlaybackRate'],
+  supportedCommands: [
+    'pause',
+    'resume',
+    'reset',
+    'seek',
+    'setPlaybackRate',
+    'prepare',
+    'destroy',
+  ],
 });
 
 export default codegenNativeComponent<NativeProps>('TxcPlayerView', {
