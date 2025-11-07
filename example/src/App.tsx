@@ -16,6 +16,8 @@ const PLAYER_SOURCE = {
     'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI0NzQ1NiIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjI0Mjk3MzUsImV4cGlyZVRpbWVTdGFtcCI6MTc2MjY4ODkzMSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjkxMDdmYTMiLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNDc0NTZfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.wPs1HUNmpytt0zugsPUAEym11rl1GnI-ZySwHhFMk7w',
 } as const;
 
+const PLAYBACK_OPTIONS = [0.5, 1, 1.25, 1.5, 2];
+
 type PlayerStatus = 'idle' | 'buffering' | 'playing' | 'paused' | 'ended' | 'error';
 
 export default function App() {
@@ -26,6 +28,7 @@ export default function App() {
   const [duration, setDuration] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [key, setKey] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   useEffect(() => {
     setTXCLicense(
@@ -121,6 +124,7 @@ export default function App() {
           key={key}
           ref={playerRef}
           paused={!playing}
+          playbackRate={playbackRate}
           source={PLAYER_SOURCE}
           onPlayerEvent={handlePlayerEvent}
           onProgress={handleProgress}
@@ -138,6 +142,20 @@ export default function App() {
         {!!message && <Text style={styles.infoText}>{`信息：${message}`}</Text>}
       </View>
 
+      <View style={styles.rateRow}>
+        {PLAYBACK_OPTIONS.map((option) => (
+          <Pressable
+            key={option}
+            onPress={() => setPlaybackRate(option)}
+            style={[
+              styles.rateButton,
+              option === playbackRate && styles.rateButtonActive,
+            ]}
+          >
+            <Text style={styles.controlText}>{`${option}x`}</Text>
+          </Pressable>
+        ))}
+      </View>
       <View style={styles.controls}>
         <Pressable onPress={seekToStart} style={styles.controlButton}>
           <Text style={styles.controlText}>Seek 0s</Text>
@@ -184,12 +202,27 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 16,
   },
+  rateRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
   controlButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.15)',
     marginHorizontal: 8,
+  },
+  rateButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: 4,
+  },
+  rateButtonActive: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   controlText: {
     color: '#fff',

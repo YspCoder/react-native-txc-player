@@ -31,6 +31,7 @@ export type ProgressEvent = Readonly<{
 interface NativeProps extends ViewProps {
   paused?: WithDefault<boolean, false>;
   source?: Source;
+  playbackRate?: Float;
   onPlayerEvent?: DirectEventHandler<ChangeEvent>;
   onProgress?: DirectEventHandler<ProgressEvent>;
 }
@@ -43,10 +44,11 @@ interface NativeCommands {
   reset(ref: React.ElementRef<NativeComponent>): void;
   seek(ref: React.ElementRef<NativeComponent>, position: Float): void;
   destroy(ref: React.ElementRef<NativeComponent>): void;
+  setPlaybackRate(ref: React.ElementRef<NativeComponent>, rate: Float): void;
 }
 
 export const Commands = codegenNativeCommands<NativeCommands>({
-  supportedCommands: ['pause', 'resume', 'reset', 'seek', 'destroy'],
+  supportedCommands: ['pause', 'resume', 'reset', 'seek', 'destroy', 'setPlaybackRate'],
 });
 
 export default codegenNativeComponent<NativeProps>('TxcPlayerView', {

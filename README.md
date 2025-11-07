@@ -84,6 +84,7 @@ const styles = StyleSheet.create({
 | --- | --- | --- |
 | `paused` | `boolean` (default `false`) | When `true` the player is paused; set to `false` to play/resume. |
 | `source` | `{ url?: string; appId?: string; fileId?: string; psign?: string }` | Either pass a direct URL **or** a VOD `fileId` with the corresponding `appId`/`psign`. |
+| `playbackRate` | `number` | Playback speed multiplier (default `1`). Applies equally on iOS/Android via `TXVodPlayer.setRate`. |
 | `onPlayerEvent` | `(event) => void` | Receives events such as `begin`, `firstFrame`, `progress`, `end`, `loadingEnd`, `error`.  The payload also contains `code`/`message` when available. |
 | `onProgress` | `(event) => void` | Fires with `{ position }` updates for the current playback position (in seconds). |
 

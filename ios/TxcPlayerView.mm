@@ -11,6 +11,7 @@
 
 #import <QuartzCore/QuartzCore.h>
 #import <limits.h>
+#import <float.h>
 #import <math.h>
 
 #import <TXLiteAVSDK_Player_Premium/TXVodPlayer.h>
@@ -35,6 +36,7 @@ using namespace facebook::react;
   BOOL _destroyed;
   NSDictionary *_Nullable _source;
   CFTimeInterval _lastProgressEventTs;
+  double _playbackRate;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -71,6 +73,7 @@ using namespace facebook::react;
     _hasRenderedFirstFrame = NO;
     _destroyed = NO;
     _lastProgressEventTs = 0;
+    _playbackRate = 1.0;
   }
   return self;
 }
@@ -128,6 +131,14 @@ using namespace facebook::react;
     _hasRenderedFirstFrame = NO;
   }
 
+  double incomingRate = newViewProps.playbackRate;
+  double desiredRate = incomingRate > 0 ? incomingRate : 1.0;
+  BOOL rateChanged = fabs(desiredRate - _playbackRate) > DBL_EPSILON;
+  _playbackRate = desiredRate;
+  if (rateChanged) {
+    [self applyPlaybackRate];
+  }
+
   [super updateProps:props oldProps:oldProps];
 
   if (_paused) {
@@ -182,6 +193,14 @@ using namespace facebook::react;
     } else {
       [self startPlaybackWithCurrentSource];
     }
+  });
+}
+
+- (void)applyPlaybackRate
+{
+  double rate = _playbackRate > 0 ? _playbackRate : 1.0;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [self.player setRate:(float)rate];
   });
 }
 
@@ -285,6 +304,7 @@ using namespace facebook::react;
   _hasStartedPlayback = YES;
   _hasRenderedFirstFrame = NO;
   _lastProgressEventTs = 0;
+  [self applyPlaybackRate];
 }
 
 - (void)stopPlaybackPreservingSurface:(BOOL)preserve

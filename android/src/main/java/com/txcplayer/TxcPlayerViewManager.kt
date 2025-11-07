@@ -38,6 +38,10 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
     view.setSource(value)
   }
 
+  override fun setPlaybackRate(view: TxcPlayerView, value: Double) {
+    view.setPlaybackRate(value)
+  }
+
   override fun pause(view: TxcPlayerView) {
     view.pausePlayback()
   }

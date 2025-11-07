@@ -21,6 +21,7 @@ import com.tencent.rtmp.TXVodConstants
 import com.tencent.rtmp.TXVodPlayer
 import com.tencent.rtmp.ui.TXCloudVideoView
 
+private const val EVT_PLAYABLE_DURATION = "EVT_PLAYABLE_DURATION"
 private const val EVT_MSG = "EVT_MSG"
 
 class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventListener {
@@ -32,6 +33,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   private var pausedByProp = false
   private var hasStartedPlayback = false
   private var currentSource: Source? = null
+  private var playbackRate = 1.0f
   private var lastProgressTs = 0L
 
   private data class Source(
@@ -100,6 +102,14 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     val psign = map.getStringSafe("psign")
     currentSource = Source(url, appId, fileId, psign)
     maybeStartPlayback()
+  }
+
+  fun setPlaybackRate(rate: Double) {
+    val clamped = if (rate > 0) rate else 1.0
+    playbackRate = clamped.toFloat()
+    UiThreadUtil.runOnUiThread {
+      player.setRate(playbackRate)
+    }
   }
 
   fun pausePlayback() {
@@ -174,6 +184,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
       return
     }
 
+    player.setRate(playbackRate)
     hasStartedPlayback = true
   }
 
@@ -185,7 +196,9 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
   private fun handleProgressEvent(bundle: Bundle?) {
     val progressMs = bundle?.getInt(TXVodConstants.EVT_PLAY_PROGRESS)?.times(1000) ?: -1
     val durationMs = bundle?.getInt(TXVodConstants.EVT_PLAY_DURATION)?.times(1000) ?: -1
-    val playableMs = bundle?.getInt(TXVodConstants.EVT_PLAYABLE_DURATION)?.times(1000) ?: -1
+    val playableMs = bundle?.getInt(TXVodConstants.EVT_PLAYABLE_DURATION)?.times(1000)
+      ?: bundle?.getInt(EVT_PLAYABLE_DURATION)?.times(1000)
+      ?: -1
 
     if (progressMs < 0 && durationMs < 0 && playableMs < 0) {
       return
@@ -240,9 +253,15 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
 
   private fun emitEvent(eventName: String, params: WritableMap?) {
     val context = reactContext ?: return
-    @Suppress("DEPRECATION")
-    (context.getJSModule(RCTEventEmitter::class.java)
-        .receiveEvent(id, eventName, params))
+    val surfaceId = UIManagerHelper.getSurfaceId(this)
+    if (surfaceId > 0) {
+      context.getJSModule(RCTModernEventEmitter::class.java)
+        ?.receiveEvent(surfaceId, id, eventName, params)
+    } else {
+      @Suppress("DEPRECATION")
+      context.getJSModule(RCTEventEmitter::class.java)
+        ?.receiveEvent(id, eventName, params)
+    }
   }
 
   fun cleanup() {
