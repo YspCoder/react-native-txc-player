@@ -6,7 +6,7 @@
 //
 
 #import "RNTXCLicenseModule.h"
-#import <TXLiteAVSDK_Player/TXLiveBase.h>
+#import <TXLiteAVSDK_Player_Premium/TXLiveBase.h>
 
 @implementation RNTXCLicenseModule
 

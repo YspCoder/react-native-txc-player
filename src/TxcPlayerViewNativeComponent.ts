@@ -24,38 +24,6 @@ export type Source = Readonly<{
   psign?: string;
 }>;
 
-export type Subtitle = Readonly<{
-  url: string;
-  name: string;
-  type?: string;
-}>;
-
-export type WatermarkConfig = Readonly<{
-  type?: string;
-  text: string;
-  duration?: Float;
-  fontSize?: Float;
-  color?: string;
-}>;
-
-export type PlayerConfig = Readonly<{
-  hideFullscreenButton?: boolean;
-  hideFullScreenButton?: boolean;
-  hideFloatWindowButton?: boolean;
-  hidePipButton?: boolean;
-  hideBackButton?: boolean;
-  hideResolutionButton?: boolean;
-  hidePlayButton?: boolean;
-  hideProgressBar?: boolean;
-  autoHideProgressBar?: WithDefault<boolean, true>;
-  maxBufferSize?: Float;
-  maxPreloadSize?: Float;
-  disableDownload?: boolean;
-  coverUrl?: string;
-  dynamicWatermark?: WatermarkConfig;
-  subtitles?: readonly Subtitle[];
-}>;
-
 export type ProgressEvent = Readonly<{
   position: Float;
 }>;
@@ -63,7 +31,6 @@ export type ProgressEvent = Readonly<{
 interface NativeProps extends ViewProps {
   paused?: WithDefault<boolean, false>;
   source?: Source;
-  config?: PlayerConfig;
   onPlayerEvent?: DirectEventHandler<ChangeEvent>;
   onProgress?: DirectEventHandler<ProgressEvent>;
 }

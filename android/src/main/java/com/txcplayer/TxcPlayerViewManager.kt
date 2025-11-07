@@ -38,8 +38,24 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
     view.setSource(value)
   }
 
-  override fun setConfig(view: TxcPlayerView, value: ReadableMap?) {
-    view.setConfig(value)
+  override fun pause(view: TxcPlayerView) {
+    view.pausePlayback()
+  }
+
+  override fun resume(view: TxcPlayerView) {
+    view.resumePlayback()
+  }
+
+  override fun reset(view: TxcPlayerView) {
+    view.resetPlayback()
+  }
+
+  override fun destroy(view: TxcPlayerView) {
+    view.destroyPlayback()
+  }
+
+  override fun seek(view: TxcPlayerView, position: Float) {
+    view.seekTo(position.toDouble())
   }
 
   override fun receiveCommand(view: TxcPlayerView, commandId: String?, args: ReadableArray?) {

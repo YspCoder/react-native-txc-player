@@ -1,6 +1,6 @@
 # react-native-txc-player
 
-React Native Fabric view that wraps [Tencent Cloud SuperPlayer](https://cloud.tencent.com/document/product/881/20208) for iOS and Android. It provides a declarative API for SuperPlayer UI features such as hiding built-in controls, feeding cover artwork, dynamic/ghost watermarks, and injecting external subtitles.
+React Native Fabric view that wraps [Tencent Cloud LiteAV Player Premium](https://cloud.tencent.com/document/product/266/118642) (`TXLiteAVSDK_Player_Premium`) for iOS and Android. It renders the underlying `TXVodPlayer` directly (no bundled SuperPlayer UI) and provides a minimal API for supplying a source, listening to playback events, and issuing commands from JS.
 
 The player automatically releases its native resources when the React component unmounts to avoid GC pressure on Android.
 
@@ -18,11 +18,11 @@ npm install react-native-txc-player
 cd ios && pod install
 ```
 
-The iOS target links the `SuperPlayer` CocoaPod and requires that you set a licence before playback (see [Licence](#licence) below).
+The iOS target links the `TXLiteAVSDK_Player_Premium` CocoaPod and requires that you set a licence before playback (see [Licence](#licence) below).
 
 ### Android
 
-No manual steps are required. The library pulls in `com.tencent.liteav:LiteAVSDK_Player` and registers a Fabric view. If you work behind a firewall that blocks Tencent's Maven mirror, add a mirror that can resolve `LiteAVSDK_Player` to your root Gradle repositories.
+No manual steps are required. The library depends on `com.tencent.liteav:LiteAVSDK_Player_Premium:latest.release`, which uses LiteAV's automatic AAR loader. Make sure your Gradle repositories include either Tencent's public mirror or the official LiteAV artifact host (`https://liteavsdk-1252463788.cos.ap-guangzhou.myqcloud.com/release`) so the loader can fetch the Premium package.
 
 ## Licence
 
@@ -59,34 +59,6 @@ export default function Player() {
           fileId: '5145403699454155159',
           psign: 'your-psign',
         }}
-        config={{
-          coverUrl: 'https://example.com/cover.png',
-          hideFullscreenButton: true,
-          hideFloatWindowButton: true,
-          hidePipButton: true,
-          hideBackButton: true,
-          hideResolutionButton: true,
-          hidePlayButton: true,
-          hideProgressBar: true,
-          autoHideProgressBar: true,
-          maxBufferSize: 120,
-          maxPreloadSize: 20,
-          disableDownload: true,
-          dynamicWatermark: {
-            type: 'ghost',
-            text: 'Demo Watermark',
-            color: '#80FFFFFF',
-            fontSize: 18,
-            duration: 5,
-          },
-          subtitles: [
-            {
-              url: 'https://media.w3.org/2010/05/sintel/track3_eng.vtt',
-              name: 'English',
-              type: 'vtt',
-            },
-          ],
-        }}
         onPlayerEvent={(evt) => {
           console.log('[txc-player]', evt.nativeEvent);
         }}
@@ -112,28 +84,9 @@ const styles = StyleSheet.create({
 | --- | --- | --- |
 | `paused` | `boolean` (default `false`) | When `true` the player is paused; set to `false` to play/resume. |
 | `source` | `{ url?: string; appId?: string; fileId?: string; psign?: string }` | Either pass a direct URL **or** a VOD `fileId` with the corresponding `appId`/`psign`. |
-| `config` | `PlayerConfig` | Optional UI/runtime tweaks (see below). |
-| `onPlayerEvent` | `(event) => void` | Receives events such as `begin`, `firstFrame`, `progress`, `end`, `loadingEnd`, `error`, `subtitleNotice`.  The payload also contains `code`/`message` when available. |
+| `onPlayerEvent` | `(event) => void` | Receives events such as `begin`, `firstFrame`, `progress`, `end`, `loadingEnd`, `error`.  The payload also contains `code`/`message` when available. |
 | `onProgress` | `(event) => void` | Fires with `{ position }` updates for the current playback position (in seconds). |
 
-`PlayerConfig`
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `hideFullscreenButton` (`hideFullScreenButton`) | `boolean` | Hides the fullscreen button in the native SuperPlayer UI (iOS). Android uses a custom overlay, so the flag is informational only. |
-| `hideFloatWindowButton` | `boolean` | Disables the floating-window control on iOS and prevents the Android view from attempting to enter float mode. |
-| `hidePipButton` | `boolean` | Hides the Picture-in-Picture button and force-disables automatic PiP. |
-| `hideBackButton` | `boolean` | Hides the back button in the default SuperPlayer control overlay (iOS only). |
-| `hideResolutionButton` | `boolean` | Hides the clarity/resolution switcher button in the default SuperPlayer controls (iOS only). |
-| `hidePlayButton` | `boolean` | Hides the central play/pause button that sits to the left of the progress slider (iOS only). |
-| `hideProgressBar` | `boolean` | Completely hides the native progress slider and time labels (iOS only). |
-| `autoHideProgressBar` | `boolean` | Keeps the SuperPlayer controls auto-hiding (default `true`). Set to `false` to pin the progress bar and toolbars on screen. |
-| `maxBufferSize` | `number` | Maximum forward playback buffer size in MB. Mirrors `TXVodPlayConfig.maxBufferSize`. |
-| `maxPreloadSize` | `number` | Maximum preroll/preload buffer size in MB. Mirrors `TXVodPlayConfig.maxPreloadSize`. |
-| `disableDownload` | `boolean` | Hides the download button (iOS SuperPlayer UI). |
-| `coverUrl` | `string` | Remote image displayed until the first video frame renders. |
-| `dynamicWatermark` | `{ type?: 'dynamic' \| 'ghost'; text: string; duration?: number; fontSize?: number; color?: string }` | Adds a moving text watermark overlay. `ghost` lowers alpha to mimic the official ghost watermark style. `duration` controls how often the text changes position (seconds). |
-| `subtitles` | `Array<{ url: string; name: string; type?: string }>` | External subtitle descriptors. iOS forwards them to SuperPlayer. Android surfaces a `subtitleNotice` event; loading external tracks requires the LiteAV premium package. |
 
 ## Commands
 
@@ -187,7 +140,7 @@ Event payload example:
 }
 ```
 
-`type` values currently emitted: `begin`, `firstFrame`, `loadingEnd`, `end`, `error`, `warning`, `subtitleNotice`, `fullscreenChange`, `back`, and `progress`.
+`type` values currently emitted: `begin`, `firstFrame`, `loadingEnd`, `end`, `error`, and `progress`.
 
 - `progress` is delivered roughly every 250 ms with the current `position`, full `duration`, and buffered amount (`buffered`) in seconds. Use it to drive custom progress UIs without polling native state.
 
@@ -197,7 +150,7 @@ The Android view registers as a `LifecycleEventListener` and automatically stops
 
 ## Example
 
-The repository ships with an example app (located in the `example` workspace) that demonstrates licence initialisation, the configuration surface, and tap-to-pause/resume behaviour.
+The repository ships with an example app (located in the `example` workspace) that demonstrates licence initialisation and tap-to-pause/resume behaviour.
 
 ```sh
 yarn install

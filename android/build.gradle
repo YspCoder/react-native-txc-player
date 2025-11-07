@@ -33,6 +33,9 @@ android {
   defaultConfig {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
+    ndk {
+      abiFilters "armeabi", "armeabi-v7a", "arm64-v8a"
+    }
   }
 
   buildFeatures {
@@ -75,5 +78,5 @@ def kotlin_version = getExtOrDefault("kotlinVersion")
 dependencies {
   implementation "com.facebook.react:react-android"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-  implementation "com.tencent.liteav:LiteAVSDK_Player:latest.release"
+  implementation "com.tencent.liteav:LiteAVSDK_Player_Premium:latest.release"
 }

@@ -3,7 +3,7 @@ import { NativeModules } from 'react-native';
 const { RNTXCLicenseModule } = NativeModules;
 
 /**
- * 设置 SuperPlayer License 信息
+ * 设置 TXLiteAV（Player Premium）License 信息
  * @param url  腾讯云控制台 License URL
  * @param key  License Key
  */
