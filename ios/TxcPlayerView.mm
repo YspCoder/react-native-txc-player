@@ -43,6 +43,13 @@ using namespace facebook::react;
   NSDictionary *_Nullable _source;
   CFTimeInterval _lastProgressEventTs;
   double _playbackRate;
+  BOOL _hasProgressSnapshot;
+  BOOL _lastProgressHasPosition;
+  double _lastProgressPosition;
+  BOOL _lastProgressHasDuration;
+  double _lastProgressDuration;
+  BOOL _lastProgressHasBuffered;
+  double _lastProgressBuffered;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -81,6 +88,10 @@ using namespace facebook::react;
     _isPreparing = NO;
     _lastProgressEventTs = 0;
     _playbackRate = 1.0;
+    _hasProgressSnapshot = NO;
+    _lastProgressHasPosition = NO;
+    _lastProgressHasDuration = NO;
+    _lastProgressHasBuffered = NO;
   }
   return self;
 }
@@ -137,6 +148,8 @@ using namespace facebook::react;
     _hasStartedPlayback = NO;
     _hasRenderedFirstFrame = NO;
     _isPreparing = NO;
+    _lastProgressEventTs = 0;
+    _hasProgressSnapshot = NO;
   }
 
   double incomingRate = newViewProps.playbackRate;
@@ -193,6 +206,9 @@ using namespace facebook::react;
 - (void)pause
 {
   dispatch_async(dispatch_get_main_queue(), ^{
+    if (self->_destroyed) {
+      return;
+    }
     [self.player pause];
   });
 }
@@ -200,6 +216,9 @@ using namespace facebook::react;
 - (void)resume
 {
   dispatch_async(dispatch_get_main_queue(), ^{
+    if (self->_destroyed) {
+      return;
+    }
     if (!self->_source) {
       return;
     }
@@ -216,6 +235,9 @@ using namespace facebook::react;
 {
   double rate = _playbackRate > 0 ? _playbackRate : 1.0;
   dispatch_async(dispatch_get_main_queue(), ^{
+    if (self->_destroyed) {
+      return;
+    }
     [self.player setRate:(float)rate];
   });
 }
@@ -232,11 +254,16 @@ using namespace facebook::react;
 - (void)reset
 {
   dispatch_async(dispatch_get_main_queue(), ^{
+    if (self->_destroyed) {
+      return;
+    }
     [self stopPlaybackPreservingSurface:YES];
     self->_shouldStartPlayback = (self->_source != nil);
     self->_hasStartedPlayback = NO;
     self->_hasRenderedFirstFrame = NO;
     self->_isPreparing = NO;
+    self->_lastProgressEventTs = 0;
+    self->_hasProgressSnapshot = NO;
   });
 }
 
@@ -249,19 +276,28 @@ using namespace facebook::react;
   dispatch_async(dispatch_get_main_queue(), ^{
     [self stopPlaybackPreservingSurface:NO];
     [self.player removeVideoWidget];
+    self.player.vodDelegate = nil;
+    self.player = nil;
     self->_source = nil;
     self->_shouldStartPlayback = NO;
     self->_hasStartedPlayback = NO;
     self->_hasRenderedFirstFrame = NO;
     self->_isPreparing = NO;
+    self->_lastProgressEventTs = 0;
+    self->_hasProgressSnapshot = NO;
   });
 }
 
 - (void)seekToSeconds:(double)seconds
 {
   dispatch_async(dispatch_get_main_queue(), ^{
+    if (self->_destroyed) {
+      return;
+    }
     double target = seconds < 0 ? 0 : seconds;
     [self.player seek:(float)target];
+    self->_hasProgressSnapshot = NO;
+    self->_lastProgressEventTs = 0;
   });
 }
 
@@ -271,6 +307,7 @@ using namespace facebook::react;
     if (self->_destroyed || !self->_source) {
       return;
     }
+    self->_hasProgressSnapshot = NO;
     [self startPlaybackWithCurrentSourceAllowAutoPlay:NO];
   });
 }
@@ -290,6 +327,7 @@ using namespace facebook::react;
     if (!self->_shouldStartPlayback && self->_hasStartedPlayback) {
       return;
     }
+    self->_hasProgressSnapshot = NO;
     [self startPlaybackWithCurrentSource];
   });
 }
@@ -356,6 +394,7 @@ using namespace facebook::react;
   _hasRenderedFirstFrame = NO;
   _lastProgressEventTs = 0;
   _isPreparing = !allowAutoPlay;
+  _hasProgressSnapshot = NO;
   [self applyPlaybackRate];
 
   if (!allowAutoPlay) {
@@ -372,6 +411,8 @@ using namespace facebook::react;
   _hasStartedPlayback = NO;
   _hasRenderedFirstFrame = NO;
   _isPreparing = NO;
+  _lastProgressEventTs = 0;
+  _hasProgressSnapshot = NO;
   if (!preserve) {
     [_player removeVideoWidget];
   }
@@ -396,7 +437,7 @@ using namespace facebook::react;
                   buffered:(NSNumber *_Nullable)buffered
 {
   auto emitter = std::static_pointer_cast<const TxcPlayerViewEventEmitter>(_eventEmitter);
-  if (!emitter) {
+  if (!emitter || _destroyed) {
     return;
   }
 
@@ -433,7 +474,7 @@ using namespace facebook::react;
     return;
   }
   auto emitter = std::static_pointer_cast<const TxcPlayerViewEventEmitter>(_eventEmitter);
-  if (!emitter) {
+  if (!emitter || _destroyed) {
     return;
   }
   TxcPlayerViewEventEmitter::OnProgress event{
@@ -467,7 +508,6 @@ using namespace facebook::react;
   if (_lastProgressEventTs > 0 && (now - _lastProgressEventTs) < 0.25) {
     return;
   }
-  _lastProgressEventTs = now;
 
   NSNumber *progress = [self txc_secondsValueForParam:param
                                                   key:EVT_PLAY_PROGRESS
@@ -483,6 +523,12 @@ using namespace facebook::react;
     return;
   }
 
+  if (![self txc_shouldEmitProgressForPosition:progress duration:duration buffered:playable]) {
+    return;
+  }
+
+  _lastProgressEventTs = now;
+
   [self emitChangeWithType:@"progress"
                       code:nil
                      event:@(VOD_PLAY_EVT_PLAY_PROGRESS)
@@ -494,6 +540,62 @@ using namespace facebook::react;
   if (!_hasRenderedFirstFrame) {
     _hasRenderedFirstFrame = YES;
   }
+}
+
+- (BOOL)txc_shouldEmitProgressForPosition:(NSNumber *_Nullable)position
+                                 duration:(NSNumber *_Nullable)duration
+                                 buffered:(NSNumber *_Nullable)buffered
+{
+  const double epsilon = 0.05;
+  BOOL hasPosition = (position != nil);
+  BOOL hasDuration = (duration != nil);
+  BOOL hasBuffered = (buffered != nil);
+
+  if (!_hasProgressSnapshot) {
+    _hasProgressSnapshot = YES;
+    _lastProgressHasPosition = hasPosition;
+    _lastProgressPosition = hasPosition ? position.doubleValue : 0.0;
+    _lastProgressHasDuration = hasDuration;
+    _lastProgressDuration = hasDuration ? duration.doubleValue : 0.0;
+    _lastProgressHasBuffered = hasBuffered;
+    _lastProgressBuffered = hasBuffered ? buffered.doubleValue : 0.0;
+    return YES;
+  }
+
+  BOOL differs = NO;
+
+  if (_lastProgressHasPosition != hasPosition) {
+    differs = YES;
+  } else if (hasPosition) {
+    differs = fabs(position.doubleValue - _lastProgressPosition) > epsilon;
+  }
+
+  if (!differs) {
+    if (_lastProgressHasDuration != hasDuration) {
+      differs = YES;
+    } else if (hasDuration) {
+      differs = fabs(duration.doubleValue - _lastProgressDuration) > epsilon;
+    }
+  }
+
+  if (!differs) {
+    if (_lastProgressHasBuffered != hasBuffered) {
+      differs = YES;
+    } else if (hasBuffered) {
+      differs = fabs(buffered.doubleValue - _lastProgressBuffered) > epsilon;
+    }
+  }
+
+  if (differs) {
+    _lastProgressHasPosition = hasPosition;
+    _lastProgressPosition = hasPosition ? position.doubleValue : 0.0;
+    _lastProgressHasDuration = hasDuration;
+    _lastProgressDuration = hasDuration ? duration.doubleValue : 0.0;
+    _lastProgressHasBuffered = hasBuffered;
+    _lastProgressBuffered = hasBuffered ? buffered.doubleValue : 0.0;
+  }
+
+  return differs;
 }
 
 #pragma mark - TXVodPlayListener
@@ -517,6 +619,8 @@ using namespace facebook::react;
 - (void)txc_handlePlayBeginEvent:(int)EvtID param:(NSDictionary *)param
 {
   _hasRenderedFirstFrame = YES;
+  _hasProgressSnapshot = NO;
+  _lastProgressEventTs = 0;
   if ([self txc_handlePreparedEvent:EvtID param:param]) {
     return;
   }
@@ -528,6 +632,8 @@ using namespace facebook::react;
   _hasStartedPlayback = NO;
   _hasRenderedFirstFrame = NO;
   _isPreparing = NO;
+  _hasProgressSnapshot = NO;
+  _lastProgressEventTs = 0;
   [self emitChangeWithType:@"end" code:@(EvtID) message:[self txc_eventMessageFromParam:param]];
 }
 
@@ -572,6 +678,9 @@ using namespace facebook::react;
 
 - (void)onPlayEvent:(TXVodPlayer *)player event:(int)EvtID withParam:(NSDictionary *)param
 {
+  if (_destroyed) {
+    return;
+  }
   switch (EvtID) {
     case VOD_PLAY_EVT_RCV_FIRST_I_FRAME:
       [self txc_handleFirstFrameEvent:EvtID param:param];
@@ -601,6 +710,9 @@ using namespace facebook::react;
 
 - (void)onNetStatus:(TXVodPlayer *)player withParam:(NSDictionary *)param
 {
+  if (_destroyed) {
+    return;
+  }
   (void)player;
   (void)param;
 }
