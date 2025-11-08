@@ -158,7 +158,8 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     currentSource = newSource
     isPreloading = false
     lastProgressSnapshot = null
-    maybeStartPlayback(forceStart = true)
+    val shouldForceStart = !pausedByProp
+    maybeStartPlayback(forceStart = shouldForceStart)
   }
 
   fun setPlaybackRate(rate: Double) {
