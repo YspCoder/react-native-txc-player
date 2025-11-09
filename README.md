@@ -36,44 +36,152 @@ setTXCLicense('https://your-license-url', 'your-license-key');
 
 ## Usage
 
+### 1. Initialise the LiteAV licence
+
+Call `setTXCLicense` once when your application starts. The SDK requires a
+licence URL/key pair before any playback can begin.
+
+```ts
+import { setTXCLicense } from 'react-native-txc-player';
+
+setTXCLicense('https://your-license-url', 'your-license-key');
+```
+
+### 2. Render a player view
+
+The snippet below shows how to wire up a basic player with tap-to-pause,
+progress updates, and a couple of imperative commands.
+
 ```tsx
-import { useRef, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
-import { TxcPlayerView, type TxcPlayerViewRef } from 'react-native-txc-player';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Commands,
+  TxcPlayerView,
+  type ChangeEvent,
+  type ProgressEvent,
+  type TxcPlayerViewRef,
+} from 'react-native-txc-player';
 
-export default function Player() {
-  const ref = useRef<TxcPlayerViewRef>(null);
-  const [playing, setPlaying] = useState(true);
+const SOURCE = {
+  appId: 'your-app-id',
+  fileId: 'your-file-id',
+  psign: 'your-psign',
+};
 
-  const toggle = () => {
-    setPlaying((current) => !current);
-  };
+type PlayerStatus = 'buffering' | 'playing' | 'paused' | 'ended' | 'error';
+
+export default function PlayerCard() {
+  const playerRef = useRef<TxcPlayerViewRef>(null);
+  const [status, setStatus] = useState<PlayerStatus>('buffering');
+  const [paused, setPaused] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const formattedProgress = useMemo(() => {
+    const total = duration > 0 ? duration.toFixed(1) : '??';
+    return `${position.toFixed(1)}s / ${total}s`;
+  }, [duration, position]);
+
+  const handlePlayerEvent = useCallback((event: { nativeEvent: ChangeEvent }) => {
+    const evt = event.nativeEvent;
+    setMessage(evt.message ?? null);
+
+    if (typeof evt.duration === 'number') {
+      setDuration(evt.duration);
+    }
+
+    switch (evt.type) {
+      case 'begin':
+      case 'firstFrame':
+      case 'loadingEnd':
+        setStatus(paused ? 'paused' : 'playing');
+        break;
+      case 'end':
+        setStatus('ended');
+        setPaused(true);
+        break;
+      case 'error':
+        setStatus('error');
+        setPaused(true);
+        Alert.alert('Playback error', `code=${evt.code}, message=${evt.message}`);
+        break;
+      default:
+        break;
+    }
+  }, [paused]);
+
+  const handleProgress = useCallback((event: { nativeEvent: ProgressEvent }) => {
+    if (typeof event.nativeEvent.position === 'number') {
+      setPosition(event.nativeEvent.position);
+    }
+  }, []);
+
+  const togglePlayback = useCallback(() => {
+    setPaused((current) => {
+      const next = !current;
+      setStatus(next ? 'paused' : 'playing');
+      return next;
+    });
+  }, []);
+
+  const restart = useCallback(() => {
+    if (playerRef.current) {
+      Commands.seek(playerRef.current, 0);
+    }
+  }, []);
 
   return (
-    <Pressable style={styles.player} onPress={toggle}>
-      <TxcPlayerView
-        ref={ref}
-        paused={!playing}
-        source={{
-          appId: '1500039285',
-          fileId: '5145403699454155159',
-          psign: 'your-psign',
-        }}
-        onPlayerEvent={(evt) => {
-          console.log('[txc-player]', evt.nativeEvent);
-        }}
-        style={StyleSheet.absoluteFill}
-      />
-    </Pressable>
+    <View style={styles.container}>
+      <Pressable style={styles.player} onPress={togglePlayback}>
+        <TxcPlayerView
+          ref={playerRef}
+          paused={paused}
+          source={SOURCE}
+          onPlayerEvent={handlePlayerEvent}
+          onProgress={handleProgress}
+          style={StyleSheet.absoluteFill}
+        />
+      </Pressable>
+
+      <Text style={styles.metaText}>{`Status: ${status}`}</Text>
+      <Text style={styles.metaText}>{`Progress: ${formattedProgress}`}</Text>
+      {message && <Text style={styles.metaText}>{`Message: ${message}`}</Text>}
+
+      <Pressable onPress={restart} style={styles.button}>
+        <Text style={styles.buttonLabel}>Seek to 0s</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  player: {
-    height: 220,
+  container: {
+    gap: 12,
+    padding: 16,
     borderRadius: 12,
+    backgroundColor: '#101010',
+  },
+  player: {
+    aspectRatio: 16 / 9,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#000',
+  },
+  metaText: {
+    color: '#fff',
+  },
+  button: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  buttonLabel: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 ```

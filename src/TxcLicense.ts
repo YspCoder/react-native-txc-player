@@ -9,7 +9,9 @@ const { RNTXCLicenseModule } = NativeModules;
  */
 export function setTXCLicense(url: string, key: string) {
   if (!RNTXCLicenseModule?.setLicense) {
-    console.warn('[TXCPlayer] License module not found, make sure iOS bridge is linked.');
+    console.warn(
+      '[TXCPlayer] License module not found, make sure iOS bridge is linked.'
+    );
     return;
   }
   RNTXCLicenseModule.setLicense(url, key);

@@ -1,5 +1,8 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { Commands, type TxcPlayerViewRef } from './TxcPlayerViewNativeComponent';
+import {
+  Commands,
+  type TxcPlayerViewRef,
+} from './TxcPlayerViewNativeComponent';
 
 type Options = {
   /**
@@ -35,7 +38,11 @@ export function useTxcPlayerAutoDestroy(
   ref: RefObject<TxcPlayerViewRef | null | undefined>,
   options: Options = {}
 ) {
-  const { active = true, destroyOnDeactivate = false, exclusive = true } = options;
+  const {
+    active = true,
+    destroyOnDeactivate = false,
+    exclusive = true,
+  } = options;
   const wasActive = useRef<boolean>(active);
   const lastKnownNode = useRef<TxcPlayerViewRef | null>(null);
 
