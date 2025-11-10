@@ -10,10 +10,10 @@ import {
 } from 'react-native-txc-player';
 
 const PLAYER_SOURCE = {
-  appId: '1500024012',
-  fileId: '3270835013523247456',
+  appId: '1500039285',
+  fileId: '5145403699046521985',
   psign:
-    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAyNDAxMiwiZmlsZUlkIjoiMzI3MDgzNTAxMzUyMzI0NzQ1NiIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNDgwNjc0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjI0Mjk3MzUsImV4cGlyZVRpbWVTdGFtcCI6MTc2MjY4ODkzMSwidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjkxMDdmYTMiLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzMyNzA4MzUwMTM1MjMyNDc0NTZfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.wPs1HUNmpytt0zugsPUAEym11rl1GnI-ZySwHhFMk7w',
+    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAzOTI4NSwiZmlsZUlkIjoiNTE0NTQwMzY5OTA0NjUyMTk4NSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNjQ1OTk0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjI3MjIwMDMsImV4cGlyZVRpbWVTdGFtcCI6MTc2Mjk4MTIwMywidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjkxNGY1NTMiLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzUxNDU0MDM2OTkwNDY1MjE5ODVfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.pNPzzE475te4Jc48q8TClKctfSwK8iDMuOhRtE8RCrM',
 } as const;
 
 const PLAYBACK_OPTIONS = [0.5, 1, 1.25, 1.5, 2] as const;
@@ -112,6 +112,8 @@ export default function App() {
 
   const handleProgress = useCallback(
     (event: { nativeEvent: ProgressEvent }) => {
+      console.log(event);
+      
       const { position } = event.nativeEvent;
 
       if (typeof position === 'number') {
