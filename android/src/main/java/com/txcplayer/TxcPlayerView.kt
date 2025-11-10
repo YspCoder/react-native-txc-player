@@ -126,7 +126,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
     addView(playerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
-    player.setRenderMode(TXLiveConstants.RENDER_MODE_FULL_FILL_SCREEN)
+    player.setRenderMode(TXLiveConstants.RENDER_MODE_ADJUST_RESOLUTION)
     player.setVodListener(vodListener)
     player.setAutoPlay(true)
     player.setPlayerView(playerView)
