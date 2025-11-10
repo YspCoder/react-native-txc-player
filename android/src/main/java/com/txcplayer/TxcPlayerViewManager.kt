@@ -4,7 +4,6 @@ import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.ViewManagerDelegate
-import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.viewmanagers.TxcPlayerViewManagerInterface
 import com.facebook.react.viewmanagers.TxcPlayerViewManagerDelegate
@@ -12,13 +11,9 @@ import com.facebook.react.viewmanagers.TxcPlayerViewManagerDelegate
 @ReactModule(name = TxcPlayerViewManager.NAME)
 class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
   TxcPlayerViewManagerInterface<TxcPlayerView> {
-  private val mDelegate: ViewManagerDelegate<TxcPlayerView>
+  private val mDelegate: ViewManagerDelegate<TxcPlayerView> = TxcPlayerViewManagerDelegate(this)
 
-  init {
-    mDelegate = TxcPlayerViewManagerDelegate(this)
-  }
-
-  override fun getDelegate(): ViewManagerDelegate<TxcPlayerView>? {
+  override fun getDelegate(): ViewManagerDelegate<TxcPlayerView> {
     return mDelegate
   }
 
@@ -36,10 +31,6 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
 
   override fun setSource(view: TxcPlayerView, value: ReadableMap?) {
     view.setSource(value)
-  }
-
-  override fun setPlaybackRate(view: TxcPlayerView, value: Double) {
-    view.setPlaybackRate(value)
   }
 
   override fun pause(view: TxcPlayerView) {
@@ -62,60 +53,12 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
     view.seekTo(position.toDouble())
   }
 
-  override fun receiveCommand(view: TxcPlayerView, commandId: String?, args: ReadableArray?) {
-    when (commandId) {
-      "pause" -> view.pausePlayback()
-      "resume" -> view.resumePlayback()
-      "reset" -> view.resetPlayback()
-      "destroy" -> view.destroyPlayback()
-      "seek" -> {
-        val position = args?.takeIf { it.size() > 0 }?.getDouble(0)
-        if (position != null) {
-          view.seekTo(position)
-        }
-      }
-      "setPlaybackRate" -> {
-        val rate = args?.takeIf { it.size() > 0 }?.getDouble(0)
-        if (rate != null) {
-          view.setPlaybackRate(rate)
-        }
-      }
-      "prepare" -> view.preparePlayback()
-    }
+  override fun setPlaybackRate(view: TxcPlayerView, rate: Float) {
+    view.setPlaybackRate(rate.toDouble())
   }
 
-  override fun receiveCommand(view: TxcPlayerView, commandId: Int, args: ReadableArray?) {
-    when (commandId) {
-      1 -> view.pausePlayback()
-      2 -> view.resumePlayback()
-      3 -> view.resetPlayback()
-      4 -> {
-        val position = args?.takeIf { it.size() > 0 }?.getDouble(0)
-        if (position != null) {
-          view.seekTo(position)
-        }
-      }
-      5 -> view.destroyPlayback()
-      6 -> view.preparePlayback()
-      7 -> {
-        val rate = args?.takeIf { it.size() > 0 }?.getDouble(0)
-        if (rate != null) {
-          view.setPlaybackRate(rate)
-        }
-      }
-    }
-  }
-
-  override fun getCommandsMap(): MutableMap<String, Int> {
-    return mutableMapOf(
-      "pause" to 1,
-      "resume" to 2,
-      "reset" to 3,
-      "seek" to 4,
-      "destroy" to 5,
-      "prepare" to 6,
-      "setPlaybackRate" to 7
-    )
+  override fun prepare(view: TxcPlayerView) {
+    view.preparePlayback()
   }
 
   override fun onDropViewInstance(view: TxcPlayerView) {

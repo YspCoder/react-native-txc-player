@@ -12,6 +12,7 @@ import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.UIManagerHelper
+import com.facebook.react.uimanager.events.Event
 import com.facebook.react.uimanager.events.RCTEventEmitter
 import com.facebook.react.uimanager.events.RCTModernEventEmitter
 import com.tencent.rtmp.ITXVodPlayListener
@@ -80,7 +81,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
             message = bundle.eventMessage()
           )
         }
-        TXLiveConstants.PLAY_EVT_VOD_LOADING_START -> {
+        TXLiveConstants.PLAY_EVT_PLAY_LOADING -> {
           dispatchEvent(
             type = "loadingStart",
             eventId = event,
@@ -253,7 +254,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     stopPlayback()
     player.setPlayerView(playerView)
     player.setAutoPlay(autoPlay)
-    var result: Int? = null
+    var result: Int
     if (!source.url.isNullOrBlank()) {
       result = player.startVodPlay(source.url)
     } else if (!source.fileId.isNullOrBlank() && !source.appId.isNullOrBlank()) {
@@ -290,7 +291,7 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
       return
     }
 
-    if (result != null && result < 0) {
+    if (result < 0) {
       dispatchEvent(
         type = "error",
         eventId = result,
@@ -340,8 +341,8 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
       return
     }
     val positionSeconds = metrics.positionSeconds
-    val durationSeconds = metrics.durationSeconds
-      ?: if (player.duration > 0) player.duration.toDouble() else null
+    val durationSeconds = (metrics.durationSeconds
+      ?: if (player.duration > 0) player.duration.toDouble() else null)
     val bufferedSeconds = metrics.bufferedSeconds
     if (!updateProgressSnapshot(positionSeconds, durationSeconds, bufferedSeconds)) {
       return
@@ -390,8 +391,8 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     emitEvent("onProgress") {
       Arguments.createMap().apply {
         putDouble("position", positionSeconds ?: 0.0)
-        durationSeconds?.let { putDouble("duration", it) }
-        bufferedSeconds?.let { putDouble("buffered", it) }
+        putDouble("duration", durationSeconds ?: 0.0)
+        putDouble("buffered", bufferedSeconds ?: 0.0)
       }
     }
   }
@@ -431,25 +432,26 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     }
     val progressMs = when {
       containsKey(TXVodConstants.EVT_PLAY_PROGRESS) -> getInt(TXVodConstants.EVT_PLAY_PROGRESS) * 1000
-      containsKey("EVT_PLAY_PROGRESS_MS") -> getInt("EVT_PLAY_PROGRESS_MS")
       else -> -1
     }
     val durationMs = when {
       containsKey(TXVodConstants.EVT_PLAY_DURATION) -> getInt(TXVodConstants.EVT_PLAY_DURATION) * 1000
-      containsKey("EVT_PLAY_DURATION_MS") -> getInt("EVT_PLAY_DURATION_MS")
       else -> -1
     }
     val playableMs = when {
       containsKey(TXVodConstants.EVT_PLAYABLE_DURATION) ->
         getInt(TXVodConstants.EVT_PLAYABLE_DURATION) * 1000
       containsKey(EVT_PLAYABLE_DURATION) -> getInt(EVT_PLAYABLE_DURATION) * 1000
-      containsKey("EVT_PLAYABLE_DURATION_MS") -> getInt("EVT_PLAYABLE_DURATION_MS")
       else -> -1
     }
     val positionSeconds = if (progressMs >= 0) progressMs / 1000.0 else null
     val durationSeconds = if (durationMs >= 0) durationMs / 1000.0 else null
     val bufferedSeconds = if (playableMs >= 0) playableMs / 1000.0 else null
-    return PlaybackMetrics(positionSeconds, durationSeconds, bufferedSeconds)
+    return PlaybackMetrics(
+      positionSeconds,
+      durationSeconds,
+      bufferedSeconds
+    )
   }
 
   private inline fun emitEvent(
@@ -466,14 +468,29 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
       }
       val params = paramsProvider() ?: return@runOnUiThread
       val surfaceId = UIManagerHelper.getSurfaceId(this)
-      if (surfaceId > 0) {
-        context.getJSModule(RCTModernEventEmitter::class.java)
-          ?.receiveEvent(surfaceId, id, eventName, params)
-      } else {
-        @Suppress("DEPRECATION")
-        context.getJSModule(RCTEventEmitter::class.java)
-          ?.receiveEvent(id, eventName, params)
+      val dispatcher = UIManagerHelper.getEventDispatcherForReactTag(context, id)
+
+      if (dispatcher != null) {
+        dispatcher.dispatchEvent(
+          PlayerEvent(
+            surfaceId = surfaceId,
+            viewTag = id,
+            playerEventName = eventName,
+            eventPayload = params,
+          )
+        )
+        return@runOnUiThread
       }
+
+      if (surfaceId != -1) {
+        context.getJSModule(RCTModernEventEmitter::class.java)
+            .receiveEvent(surfaceId, id, eventName, params)
+        return@runOnUiThread
+      }
+
+      @Suppress("DEPRECATION")
+      (context.getJSModule(RCTEventEmitter::class.java)
+          .receiveEvent(id, eventName, params))
     }
   }
 
@@ -540,11 +557,25 @@ class TxcPlayerView(context: Context) : FrameLayout(context), LifecycleEventList
     }
   }
 
-  private fun approxEqual(a: Double?, b: Double?, epsilon: Double): Boolean {
-    if (a == null || b == null) {
-      return a == b
+  private companion object {
+    fun approxEqual(a: Double?, b: Double?, epsilon: Double): Boolean {
+      if (a == null || b == null) return a == b
+      return abs(a - b) <= epsilon
     }
-    return abs(a - b) <= epsilon
+  }
+
+  private class PlayerEvent(
+    surfaceId: Int,
+    viewTag: Int,
+    private val playerEventName: String,
+    private val eventPayload: WritableMap?,
+  ) : Event<PlayerEvent>(surfaceId, viewTag) {
+
+    override fun getEventName(): String = playerEventName
+
+    override fun canCoalesce(): Boolean = false
+
+    override fun getEventData(): WritableMap? = eventPayload
   }
 
   private fun runOnUiThread(block: () -> Unit) {

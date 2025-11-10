@@ -6,12 +6,7 @@ import {
 } from 'react-native';
 import type * as React from 'react';
 // @ts-ignore
-import type {
-  Int32,
-  Float,
-  DirectEventHandler,
-  WithDefault,
-} from 'react-native/Libraries/Types/CodegenTypes';
+import type {Int32, Float ,DirectEventHandler, WithDefault} from 'react-native/Libraries/Types/CodegenTypes';
 
 export type ChangeEvent = Readonly<{
   type: string;
@@ -51,7 +46,6 @@ interface NativeCommands {
   resume(ref: React.ElementRef<NativeComponent>): void;
   reset(ref: React.ElementRef<NativeComponent>): void;
   seek(ref: React.ElementRef<NativeComponent>, position: Float): void;
-  setPlaybackRate(ref: React.ElementRef<NativeComponent>, rate: Float): void;
   prepare(ref: React.ElementRef<NativeComponent>): void;
   destroy(ref: React.ElementRef<NativeComponent>): void;
 }
@@ -62,7 +56,6 @@ export const Commands = codegenNativeCommands<NativeCommands>({
     'resume',
     'reset',
     'seek',
-    'setPlaybackRate',
     'prepare',
     'destroy',
   ],
