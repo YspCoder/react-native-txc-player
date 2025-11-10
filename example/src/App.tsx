@@ -10,10 +10,9 @@ import {
 } from 'react-native-txc-player';
 
 const PLAYER_SOURCE = {
-  appId: '1500039285',
-  fileId: '5145403699046521985',
-  psign:
-    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhcHBJZCI6MTUwMDAzOTI4NSwiZmlsZUlkIjoiNTE0NTQwMzY5OTA0NjUyMTk4NSIsImNvbnRlbnRJbmZvIjp7ImF1ZGlvVmlkZW9UeXBlIjoiUHJvdGVjdGVkQWRhcHRpdmUiLCJkcm1BZGFwdGl2ZUluZm8iOnsicHJpdmF0ZUVuY3J5cHRpb25EZWZpbml0aW9uIjoxNjQ1OTk0fX0sImN1cnJlbnRUaW1lU3RhbXAiOjE3NjI3MjIwMDMsImV4cGlyZVRpbWVTdGFtcCI6MTc2Mjk4MTIwMywidXJsQWNjZXNzSW5mbyI6eyJ0IjoiNjkxNGY1NTMiLCJ1cyI6ImJjMTAxMzEyMzg4NDkyXzUxNDU0MDM2OTkwNDY1MjE5ODVfXzEifSwiZ2hvc3RXYXRlcm1hcmtJbmZvIjp7InRleHQiOiJcdTUyNjdcdTY2MWYifSwiZHJtTGljZW5zZUluZm8iOnsic3RyaWN0TW9kZSI6Mn19.pNPzzE475te4Jc48q8TClKctfSwK8iDMuOhRtE8RCrM',
+  appId: '',
+  fileId: '',
+  psign: ''
 } as const;
 
 const PLAYBACK_OPTIONS = [0.5, 1, 1.25, 1.5, 2] as const;
@@ -56,8 +55,8 @@ export default function App() {
 
   useEffect(() => {
     setTXCLicense(
-      'https://license.vod2.myqcloud.com/license/v2/1314161253_1/v_cube.license',
-      '99c843cd9e1a46a589fbd1a76cd244f6'
+      '',
+      ''
     );
     setReady(true);
   }, []);
