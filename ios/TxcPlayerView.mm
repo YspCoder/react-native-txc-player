@@ -120,16 +120,17 @@ using namespace facebook::react;
   NSDictionary *previousSource = _source;
   NSMutableDictionary *dict = [NSMutableDictionary dictionary];
   if (!newViewProps.source.url.empty()) {
-    dict[@"url"] = RCTNSStringFromString(newViewProps.source.url);
+    dict[@"url"] = [NSString stringWithUTF8String:newViewProps.source.url.c_str()];
+
   }
   if (!newViewProps.source.appId.empty()) {
-    dict[@"appId"] = RCTNSStringFromString(newViewProps.source.appId);
+    dict[@"appId"] = [NSString stringWithUTF8String:newViewProps.source.appId.c_str()];
   }
   if (!newViewProps.source.fileId.empty()) {
-    dict[@"fileId"] = RCTNSStringFromString(newViewProps.source.fileId);
+    dict[@"fileId"] = [NSString stringWithUTF8String:newViewProps.source.fileId.c_str()];
   }
   if (!newViewProps.source.psign.empty()) {
-    dict[@"psign"] = RCTNSStringFromString(newViewProps.source.psign);
+    dict[@"psign"] = [NSString stringWithUTF8String:newViewProps.source.psign.c_str()];
   }
   NSDictionary *newSource = dict.count > 0 ? [dict copy] : nil;
 
@@ -442,14 +443,15 @@ using namespace facebook::react;
   }
 
   TxcPlayerViewEventEmitter::OnPlayerEvent event{
-    .type = RCTStringFromNSString(type),
+    .type = type ? std::string([type UTF8String]) : std::string(),
     .code = code ? code.intValue : 0,
     .event = eventId ? eventId.intValue : 0,
-    .message = message ? RCTStringFromNSString(message) : std::string(),
+    .message = message ? std::string([message UTF8String]) : std::string(),
     .position = position ? position.doubleValue : 0.0,
     .duration = duration ? duration.doubleValue : 0.0,
     .buffered = buffered ? buffered.doubleValue : 0.0
   };
+
   emitter->onPlayerEvent(event);
 }
 
@@ -691,7 +693,7 @@ using namespace facebook::react;
     case VOD_PLAY_EVT_PLAY_END:
       [self txc_handlePlayEndEvent:EvtID param:param];
       break;
-    case VOD_PLAY_EVT_VOD_LOADING_START:
+    case VOD_PLAY_EVT_PLAY_LOADING:
       [self emitChangeWithType:@"loadingStart" code:@(EvtID) message:[self txc_eventMessageFromParam:param]];
       break;
     case VOD_PLAY_EVT_VOD_LOADING_END:
