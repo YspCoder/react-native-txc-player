@@ -25,12 +25,10 @@ using namespace facebook::react;
 @property (nonatomic, strong) TXVodPlayer *player;
 @property (nonatomic, strong) UIView *containerView;
 @property (nonatomic, strong) UIView *renderView;
-- (void)prepare;
 - (void)setPlaybackRateFromCommand:(double)rate;
 - (NSNumber *_Nullable)txc_secondsValueForParam:(NSDictionary *)param
                                             key:(NSString *)key
                                     fallbackKey:(NSString *_Nullable)fallbackKey;
-- (BOOL)txc_handlePreparedEvent:(int)EvtID param:(NSDictionary *)param;
 @end
 
 @implementation TxcPlayerView {
@@ -39,7 +37,6 @@ using namespace facebook::react;
   BOOL _hasStartedPlayback;
   BOOL _hasRenderedFirstFrame;
   BOOL _destroyed;
-  BOOL _isPreparing;
   NSDictionary *_Nullable _source;
   CFTimeInterval _lastProgressEventTs;
   double _playbackRate;
@@ -85,7 +82,6 @@ using namespace facebook::react;
     _hasStartedPlayback = NO;
     _hasRenderedFirstFrame = NO;
     _destroyed = NO;
-    _isPreparing = NO;
     _lastProgressEventTs = 0;
     _playbackRate = 1.0;
     _hasProgressSnapshot = NO;
@@ -148,7 +144,6 @@ using namespace facebook::react;
     _shouldStartPlayback = (_source != nil);
     _hasStartedPlayback = NO;
     _hasRenderedFirstFrame = NO;
-    _isPreparing = NO;
     _lastProgressEventTs = 0;
     _hasProgressSnapshot = NO;
   }
@@ -195,8 +190,6 @@ using namespace facebook::react;
     if ([value isKindOfClass:NSNumber.class]) {
       [self setPlaybackRateFromCommand:value.doubleValue];
     }
-  } else if ([commandName isEqualToString:@"prepare"]) {
-    [self prepare];
   } else {
     [super handleCommand:commandName args:args];
   }
@@ -224,7 +217,6 @@ using namespace facebook::react;
       return;
     }
     if (self->_hasStartedPlayback) {
-      self->_isPreparing = NO;
       [self.player resume];
     } else {
       [self startPlaybackWithCurrentSourceAllowAutoPlay:YES];
@@ -262,7 +254,6 @@ using namespace facebook::react;
     self->_shouldStartPlayback = (self->_source != nil);
     self->_hasStartedPlayback = NO;
     self->_hasRenderedFirstFrame = NO;
-    self->_isPreparing = NO;
     self->_lastProgressEventTs = 0;
     self->_hasProgressSnapshot = NO;
   });
@@ -283,7 +274,6 @@ using namespace facebook::react;
     self->_shouldStartPlayback = NO;
     self->_hasStartedPlayback = NO;
     self->_hasRenderedFirstFrame = NO;
-    self->_isPreparing = NO;
     self->_lastProgressEventTs = 0;
     self->_hasProgressSnapshot = NO;
   });
@@ -301,18 +291,6 @@ using namespace facebook::react;
     self->_lastProgressEventTs = 0;
   });
 }
-
-- (void)prepare
-{
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if (self->_destroyed || !self->_source) {
-      return;
-    }
-    self->_hasProgressSnapshot = NO;
-    [self startPlaybackWithCurrentSourceAllowAutoPlay:NO];
-  });
-}
-
 
 #pragma mark - Playback helpers
 
@@ -379,14 +357,12 @@ using namespace facebook::react;
     RCTLogWarn(@"[TxcPlayerView] invalid source: %@", _source);
     [self emitChangeWithType:@"error" code:@(-1) message:@"Invalid source"];
     _player.isAutoPlay = YES;
-    _isPreparing = NO;
     return;
   }
 
   if (result < 0) {
     [self emitChangeWithType:@"error" code:@(result) message:@"Failed to start playback"];
     _player.isAutoPlay = YES;
-    _isPreparing = NO;
     return;
   }
 
@@ -394,7 +370,6 @@ using namespace facebook::react;
   _hasStartedPlayback = YES;
   _hasRenderedFirstFrame = NO;
   _lastProgressEventTs = 0;
-  _isPreparing = !allowAutoPlay;
   _hasProgressSnapshot = NO;
   [self applyPlaybackRate];
 
@@ -411,7 +386,6 @@ using namespace facebook::react;
   [_player stopPlay];
   _hasStartedPlayback = NO;
   _hasRenderedFirstFrame = NO;
-  _isPreparing = NO;
   _lastProgressEventTs = 0;
   _hasProgressSnapshot = NO;
   if (!preserve) {
@@ -615,7 +589,6 @@ using namespace facebook::react;
 {
   _hasRenderedFirstFrame = YES;
   [self emitChangeWithType:@"firstFrame" code:@(EvtID) message:[self txc_eventMessageFromParam:param]];
-  [self txc_handlePreparedEvent:EvtID param:param];
 }
 
 - (void)txc_handlePlayBeginEvent:(int)EvtID param:(NSDictionary *)param
@@ -623,9 +596,6 @@ using namespace facebook::react;
   _hasRenderedFirstFrame = YES;
   _hasProgressSnapshot = NO;
   _lastProgressEventTs = 0;
-  if ([self txc_handlePreparedEvent:EvtID param:param]) {
-    return;
-  }
   [self emitChangeWithType:@"begin" code:@(EvtID) message:[self txc_eventMessageFromParam:param]];
 }
 
@@ -633,7 +603,6 @@ using namespace facebook::react;
 {
   _hasStartedPlayback = NO;
   _hasRenderedFirstFrame = NO;
-  _isPreparing = NO;
   _hasProgressSnapshot = NO;
   _lastProgressEventTs = 0;
   [self emitChangeWithType:@"end" code:@(EvtID) message:[self txc_eventMessageFromParam:param]];
@@ -641,41 +610,7 @@ using namespace facebook::react;
 
 - (void)txc_handleLoadingEndEvent:(int)EvtID param:(NSDictionary *)param
 {
-  if ([self txc_handlePreparedEvent:EvtID param:param]) {
-    return;
-  }
   [self emitChangeWithType:@"loadingEnd" code:@(EvtID) message:[self txc_eventMessageFromParam:param]];
-}
-
-- (BOOL)txc_handlePreparedEvent:(int)EvtID param:(NSDictionary *)param
-{
-  if (!_isPreparing) {
-    return NO;
-  }
-  _isPreparing = NO;
-  dispatch_async(dispatch_get_main_queue(), ^{
-    [self.player pause];
-    self.player.isAutoPlay = YES;
-  });
-  NSNumber *progress = [self txc_secondsValueForParam:param
-                                                  key:EVT_PLAY_PROGRESS
-                                          fallbackKey:@"EVT_PLAY_PROGRESS_MS"];
-  NSNumber *duration = [self txc_secondsValueForParam:param
-                                                  key:EVT_PLAY_DURATION
-                                          fallbackKey:@"EVT_PLAY_DURATION_MS"];
-  NSNumber *playable = [self txc_secondsValueForParam:param
-                                                  key:EVT_PLAYABLE_DURATION
-                                          fallbackKey:@"EVT_PLAYABLE_DURATION_MS"];
-  NSString *message = [self txc_eventMessageFromParam:param];
-  [self emitChangeWithType:@"prepared"
-                      code:@(EvtID)
-                     event:@(EvtID)
-                   message:message
-                  position:progress
-                  duration:duration
-                  buffered:playable];
-  [self emitProgressPosition:progress duration:duration buffered:playable];
-  return YES;
 }
 
 - (void)onPlayEvent:(TXVodPlayer *)player event:(int)EvtID withParam:(NSDictionary *)param

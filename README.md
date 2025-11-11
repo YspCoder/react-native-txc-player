@@ -209,6 +209,41 @@ Commands.seek(ref, 42); // jump to 42 seconds (best-effort)
 Commands.destroy(ref); // releases the native player instance and clears its source
 ```
 
+### 预下载（Pre-download）
+
+通过 LiteAV 的 `TXVodPreloadManager` 可以把即将播放的视频数据提前缓存到本地，降低首帧等待。库内提供跨平台的辅助方法，参考 [官方文档](https://cloud.tencent.com/document/product/266/83142#download)。
+
+```ts
+import {
+  startPreDownload,
+  stopPreDownload,
+  addPreDownloadListener,
+  type PreDownloadEvent,
+} from 'react-native-txc-player';
+
+// 1. 启动预下载（支持 URL 或 fileId）
+const taskId = await startPreDownload({
+  url: 'https://example.com/video.m3u8',
+  // 或者:
+  // appId: '123456789',
+  // fileId: '528589080xxxxxxx',
+  // psign: 'xxx', // 可选
+  preloadSizeMB: 10,
+  preferredResolution: 1920 * 1080,
+});
+
+// 2. 监听进度（start / complete / error）
+const sub = addPreDownloadListener((event: PreDownloadEvent) => {
+  console.log('pre-download', event);
+});
+
+// 3. 取消任务
+stopPreDownload(taskId);
+
+// 4. 组件卸载时清理监听
+sub.remove();
+```
+
 ### Auto-destroy helpers
 
 For list or carousel UIs where you want to automatically release the previously playing instance when a new cell becomes active, use the `useTxcPlayerAutoDestroy` hook. It destroys the native player when the component unmounts and (by default) ensures only one player stays active at a time.

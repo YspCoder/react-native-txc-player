@@ -46,7 +46,6 @@ interface NativeCommands {
   resume(ref: React.ElementRef<NativeComponent>): void;
   reset(ref: React.ElementRef<NativeComponent>): void;
   seek(ref: React.ElementRef<NativeComponent>, position: Float): void;
-  prepare(ref: React.ElementRef<NativeComponent>): void;
   destroy(ref: React.ElementRef<NativeComponent>): void;
 }
 
@@ -56,7 +55,6 @@ export const Commands = codegenNativeCommands<NativeCommands>({
     'resume',
     'reset',
     'seek',
-    'prepare',
     'destroy',
   ],
 });

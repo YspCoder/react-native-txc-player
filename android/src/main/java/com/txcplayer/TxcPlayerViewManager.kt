@@ -57,10 +57,6 @@ class TxcPlayerViewManager : SimpleViewManager<TxcPlayerView>(),
     view.setPlaybackRate(rate.toDouble())
   }
 
-  override fun prepare(view: TxcPlayerView) {
-    view.preparePlayback()
-  }
-
   override fun onDropViewInstance(view: TxcPlayerView) {
     super.onDropViewInstance(view)
     view.cleanup()
